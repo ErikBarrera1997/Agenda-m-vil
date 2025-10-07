@@ -1,6 +1,7 @@
 package com.dev.uiElements
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +45,21 @@ fun RecordatoriosScreen() {
     val recordatorios = remember { mutableStateListOf<Recordatorio>() }
     var showDialog by remember { mutableStateOf(false) }
 
+    //Esto es para pruebas solamente.
+    //Se ejecuta una vez al iniciar
+    LaunchedEffect(Unit) {
+        if (recordatorios.isEmpty()) {
+            recordatorios.add(
+                Recordatorio(
+                    id = 0,
+                    titulo = "Curso de Kotlin",
+                    descripcion = "Aprender Jetpack Compose desde cero"
+                )
+            )
+        }
+    }
+
+
     Scaffold(
         topBar = { TopBar(onAddClick = { showDialog = true }) },
         floatingActionButton = {
@@ -55,14 +72,15 @@ fun RecordatoriosScreen() {
             SearchBar()
             ReminderList(
                 reminders = recordatorios,
-                onEdit = { index, nuevoTitulo, nuevaDescripcion ->
-                    recordatorios[index] = recordatorios[index].copy(
-                        titulo = nuevoTitulo,
-                        descripcion = nuevaDescripcion
-                    )
+                onEdit = { actualizado ->
+                    val index = recordatorios.indexOfFirst { it.id == actualizado.id }
+                    if (index != -1) {
+                        recordatorios[index] = actualizado
+                    }
                 }
             )
         }
+
 
         if (showDialog) {
             AddReminderDialog(
@@ -112,54 +130,59 @@ fun SearchBar() {
 @Composable
 fun ReminderList(
     reminders: List<Recordatorio>,
-    onEdit: (Int, String, String) -> Unit
+    onEdit: (Recordatorio) -> Unit
 ) {
     LazyColumn {
-        itemsIndexed(reminders) { index, reminder ->
+        itemsIndexed(reminders) { _, reminder ->
             ReminderItem(
                 reminder = reminder,
-                onEdit = { nuevoTitulo, nuevaDescripcion ->
-                    onEdit(index, nuevoTitulo, nuevaDescripcion)
+                onEdit = { actualizado ->
+                    onEdit(actualizado)
                 }
             )
         }
     }
 }
 
+
 @Composable
 fun ReminderItem(
     reminder: Recordatorio,
-    onEdit: (String, String) -> Unit
+    onEdit: (Recordatorio) -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = reminder.titulo, style = MaterialTheme.typography.titleMedium)
-            Text(text = reminder.descripcion, style = MaterialTheme.typography.bodyMedium)
-            Row(horizontalArrangement = Arrangement.End) {
-                IconButton(onClick = { showEditDialog = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Editar")
+    Box {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            elevation = CardDefaults.cardElevation(4.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(text = reminder.titulo, style = MaterialTheme.typography.titleMedium)
+                Text(text = reminder.descripcion, style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.End) {
+                    IconButton(onClick = {
+                        println("Lápiz presionado")
+                        showEditDialog = true
+                    }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Editar")
+                    }
                 }
             }
         }
-    }
 
-    if (showEditDialog) {
-        AddReminderDialog(
-            initialTitle = reminder.titulo,
-            initialDescription = reminder.descripcion,
-            onDismiss = { showEditDialog = false },
-            onSave = { nuevoTitulo, nuevaDescripcion ->
-                onEdit(nuevoTitulo, nuevaDescripcion)
-                showEditDialog = false
-            }
-        )
+        if (showEditDialog) {
+            EditarRecordatorioDialog(
+                recordatorio = reminder,
+                onDismiss = { showEditDialog = false },
+                onSave = {
+                    onEdit(it)
+                    showEditDialog = false
+                }
+            )
+        }
     }
 }
 
@@ -194,12 +217,7 @@ fun AddReminderDialog(
                     label = { Text("Título") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = descripcion,
-                    onValueChange = { descripcion = it },
-                    label = { Text("Descripción") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+
             }
         }
     )

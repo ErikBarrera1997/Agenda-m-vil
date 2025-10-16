@@ -5,6 +5,6 @@ data class Recordatorio(
     var titulo: String,
     var descripcion: String,
     var fechaInicio: String? = null,
-    var fechaFin: String? = null
-
+    var fechaFin: String? = null,
+    val cumplido: Boolean = false
 )

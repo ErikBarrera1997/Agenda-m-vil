@@ -17,6 +17,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -83,12 +85,13 @@ fun RecordatoriosScreen() {
         if (showDialog) {
             AddReminderDialog(
                 onDismiss = { showDialog = false },
-                onSave = { titulo, descripcion ->
-                    recordatorios.add(Recordatorio(recordatorios.size, titulo, descripcion))
+                onSave = { nuevo ->
+                    recordatorios.add(nuevo)
                     showDialog = false
                 }
             )
         }
+
     }
 }
 
@@ -187,18 +190,29 @@ fun ReminderItem(
 
 @Composable
 fun AddReminderDialog(
-    initialTitle: String = "",
-    initialDescription: String = "",
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (Recordatorio) -> Unit
 ) {
-    var titulo by remember { mutableStateOf(initialTitle) }
-    var descripcion by remember { mutableStateOf(initialDescription) }
+    var titulo by remember { mutableStateOf("") }
+    var descripcion by remember { mutableStateOf("") }
+    var fechaInicio by remember { mutableStateOf("") }
+    var fechaFin by remember { mutableStateOf("") }
+    var cumplido by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            Button(onClick = { onSave(titulo, descripcion) }) {
+            Button(onClick = {
+                val nuevo = Recordatorio(
+                    id = (0..Int.MAX_VALUE).random(), // o usa recordatorios.size si lo manejas arriba
+                    titulo = titulo,
+                    descripcion = descripcion,
+                    fechaInicio = fechaInicio,
+                    fechaFin = fechaFin,
+                    cumplido = cumplido
+                )
+                onSave(nuevo)
+            }) {
                 Text("Guardar")
             }
         },
@@ -216,7 +230,31 @@ fun AddReminderDialog(
                     label = { Text("Título") },
                     modifier = Modifier.fillMaxWidth()
                 )
-
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = fechaInicio,
+                    onValueChange = { fechaInicio = it },
+                    label = { Text("Fecha de inicio") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = fechaFin,
+                    onValueChange = { fechaFin = it },
+                    label = { Text("Fecha de fin") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Checkbox(checked = cumplido, onCheckedChange = { cumplido = it })
+                    Text("Cumplido", modifier = Modifier.padding(start = 8.dp))
+                }
             }
         }
     )

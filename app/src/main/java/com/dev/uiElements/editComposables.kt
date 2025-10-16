@@ -35,7 +35,7 @@ fun EditarRecordatorioDialog(
     var descripcion by remember { mutableStateOf(recordatorio.descripcion) }
     var fechaInicio by remember { mutableStateOf(recordatorio.fechaInicio ?: "") }
     var fechaFin by remember { mutableStateOf(recordatorio.fechaFin ?: "") }
-   // var cumplido by remember { mutableStateOf(recordatorio.cumplido) }
+    var cumplido by remember { mutableStateOf(recordatorio.cumplido) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -151,7 +152,36 @@ fun ReminderItem(
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(text = reminder.titulo, style = MaterialTheme.typography.titleMedium)
                 Text(text = reminder.descripcion, style = MaterialTheme.typography.bodyMedium)
-                Row(horizontalArrangement = Arrangement.End) {
+
+                if (!reminder.fechaInicio.isNullOrBlank()) {
+                    Text(
+                        text = "Inicio: ${reminder.fechaInicio}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+
+                if (!reminder.fechaFin.isNullOrBlank()) {
+                    Text(
+                        text = "Fin: ${reminder.fechaFin}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+
+                if (reminder.cumplido) {
+                    Text(
+                        text = "✔ Cumplido",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF388E3C),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
                     IconButton(onClick = {
                         println("Lápiz presionado")
                         showEditDialog = true

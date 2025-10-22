@@ -1,5 +1,7 @@
 package com.dev.uiElements
 
+import android.app.DatePickerDialog
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,36 +31,29 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.dev.Dao.Recordatorio
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun RecordatoriosScreen() {
-    val recordatorios = remember { mutableStateListOf<Recordatorio>() }
+    val context = LocalContext.current
+    val viewModel: RecordatoriosViewModel = viewModel(
+        factory = RecordatoriosViewModelFactory(context)
+    )
+
     var showDialog by remember { mutableStateOf(false) }
-
-    //Esto es para pruebas solamente.
-    //Se ejecuta una vez al iniciar
-    LaunchedEffect(Unit) {
-        if (recordatorios.isEmpty()) {
-            recordatorios.add(
-                Recordatorio(
-                    id = 0,
-                    titulo = "Curso de Kotlin",
-                    descripcion = "Aprender Jetpack Compose desde cero"
-                )
-            )
-        }
-    }
-
 
     Scaffold(
         topBar = { TopBar(onAddClick = { showDialog = true }) },
@@ -71,27 +66,20 @@ fun RecordatoriosScreen() {
         Column(modifier = Modifier.padding(padding)) {
             SearchBar()
             ReminderList(
-                reminders = recordatorios,
-                onEdit = { actualizado ->
-                    val index = recordatorios.indexOfFirst { it.id == actualizado.id }
-                    if (index != -1) {
-                        recordatorios[index] = actualizado
-                    }
-                }
+                reminders = viewModel.recordatorios,
+                onEdit = { actualizado -> viewModel.editarRecordatorio(actualizado) }
             )
         }
-
 
         if (showDialog) {
             AddReminderDialog(
                 onDismiss = { showDialog = false },
                 onSave = { nuevo ->
-                    recordatorios.add(nuevo)
+                    viewModel.agregarRecordatorio(nuevo)
                     showDialog = false
                 }
             )
         }
-
     }
 }
 
@@ -181,7 +169,6 @@ fun ReminderItem(
                 onSave = {
                     onEdit(it)
                     showEditDialog = false
-                    println("su perraaaaa madreeeee")
                 }
             )
         }
@@ -193,18 +180,34 @@ fun AddReminderDialog(
     onDismiss: () -> Unit,
     onSave: (Recordatorio) -> Unit
 ) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
     var titulo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
     var fechaInicio by remember { mutableStateOf("") }
     var fechaFin by remember { mutableStateOf("") }
     var cumplido by remember { mutableStateOf(false) }
 
+    fun showDatePicker(onDateSelected: (String) -> Unit) {
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                calendar.set(year, month, dayOfMonth)
+                onDateSelected(dateFormatter.format(calendar.time))
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             Button(onClick = {
                 val nuevo = Recordatorio(
-                    id = (0..Int.MAX_VALUE).random(), // o usa recordatorios.size si lo manejas arriba
                     titulo = titulo,
                     descripcion = descripcion,
                     fechaInicio = fechaInicio,
@@ -238,20 +241,23 @@ fun AddReminderDialog(
                 )
                 OutlinedTextField(
                     value = fechaInicio,
-                    onValueChange = { fechaInicio = it },
+                    onValueChange = {},
                     label = { Text("Fecha de inicio") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker { fechaInicio = it } },
+                    readOnly = true
                 )
                 OutlinedTextField(
                     value = fechaFin,
-                    onValueChange = { fechaFin = it },
+                    onValueChange = {},
                     label = { Text("Fecha de fin") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker { fechaFin = it } },
+                    readOnly = true
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = cumplido, onCheckedChange = { cumplido = it })
                     Text("Cumplido", modifier = Modifier.padding(start = 8.dp))
                 }
@@ -259,6 +265,9 @@ fun AddReminderDialog(
         }
     )
 }
+
+
+
 
 @Preview(showBackground = true)
 @Composable

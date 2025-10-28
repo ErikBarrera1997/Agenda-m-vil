@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -26,6 +28,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -303,24 +306,27 @@ fun AddReminderDialog(
                     label = { Text("Descripción") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = fechaInicio,
-                    onValueChange = {},
-                    label = { Text("Fecha de inicio") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDatePicker { fechaInicio = it } },
-                    readOnly = true
-                )
-                OutlinedTextField(
-                    value = fechaFin,
-                    onValueChange = {},
-                    label = { Text("Fecha de fin") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDatePicker { fechaFin = it } },
-                    readOnly = true
-                )
+
+                Text("Fecha de inicio", style = MaterialTheme.typography.labelSmall)
+                OutlinedButton(
+                    onClick = { showDatePicker { fechaInicio = it } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (fechaInicio.isEmpty()) "Seleccionar fecha" else fechaInicio)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text("Fecha de fin", style = MaterialTheme.typography.labelSmall)
+                OutlinedButton(
+                    onClick = { showDatePicker { fechaFin = it } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (fechaFin.isEmpty()) "Seleccionar fecha" else fechaFin)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = cumplido, onCheckedChange = { cumplido = it })
                     Text("Cumplido", modifier = Modifier.padding(start = 8.dp))

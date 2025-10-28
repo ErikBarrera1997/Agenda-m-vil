@@ -1,0 +1,27 @@
+# Android Studio
+.idea/
+*.iml
+local.properties
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.log
+*.lock
+
+# Archivos de ejecución
+*.apk
+*.ap_
+
+# Cache de IntelliJ
+out/
+
+# Archivos de prueba
+test-output/

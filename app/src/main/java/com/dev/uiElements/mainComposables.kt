@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -55,6 +56,18 @@ fun RecordatoriosScreen() {
     )
 
     var showDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val recordatoriosFiltrados = remember(searchQuery, viewModel.recordatorios) {
+        if (searchQuery.isBlank()) {
+            viewModel.recordatorios
+        } else {
+            viewModel.recordatorios.filter {
+                it.titulo.contains(searchQuery, ignoreCase = true) ||
+                        it.descripcion.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
     Scaffold(
         topBar = { TopBar(onAddClick = { showDialog = true }) },
@@ -65,10 +78,21 @@ fun RecordatoriosScreen() {
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            SearchBar()
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Buscar recordatorio") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                singleLine = true
+            )
+
             ReminderList(
-                reminders = viewModel.recordatorios,
-                onEdit = { actualizado -> viewModel.editarRecordatorio(actualizado) }
+                reminders = recordatoriosFiltrados,
+                onEdit = { actualizado -> viewModel.editarRecordatorio(actualizado) },
+                onDelete = { eliminado -> viewModel.eliminarRecordatorio(eliminado) }
+
             )
         }
 
@@ -103,32 +127,34 @@ fun TopBar(onAddClick: () -> Unit) {
 }
 
 @Composable
-fun SearchBar() {
+fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit
+) {
     OutlinedTextField(
-        value = "",
-        onValueChange = { /* actualizar búsqueda */ },
-        label = { Text("Buscar Recordatorios") },
+        value = query,
+        onValueChange = onQueryChange,
+        label = { Text("Buscar recordatorio") },
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-        leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = "Buscar")
-        }
+        singleLine = true
     )
 }
+
 
 @Composable
 fun ReminderList(
     reminders: List<Recordatorio>,
-    onEdit: (Recordatorio) -> Unit
+    onEdit: (Recordatorio) -> Unit,
+    onDelete: (Recordatorio) -> Unit
 ) {
     LazyColumn {
         itemsIndexed(reminders) { _, reminder ->
             ReminderItem(
                 reminder = reminder,
-                onEdit = { actualizado ->
-                    onEdit(actualizado)
-                }
+                onEdit = { actualizado -> onEdit(actualizado) },
+                onDelete = { eliminado -> onDelete(eliminado) }
             )
         }
     }
@@ -138,9 +164,11 @@ fun ReminderList(
 @Composable
 fun ReminderItem(
     reminder: Recordatorio,
-    onEdit: (Recordatorio) -> Unit
+    onEdit: (Recordatorio) -> Unit,
+    onDelete: (Recordatorio) -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Box {
         Card(
@@ -154,39 +182,24 @@ fun ReminderItem(
                 Text(text = reminder.descripcion, style = MaterialTheme.typography.bodyMedium)
 
                 if (!reminder.fechaInicio.isNullOrBlank()) {
-                    Text(
-                        text = "Inicio: ${reminder.fechaInicio}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+                    Text("Inicio: ${reminder.fechaInicio}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
-
                 if (!reminder.fechaFin.isNullOrBlank()) {
-                    Text(
-                        text = "Fin: ${reminder.fechaFin}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+                    Text("Fin: ${reminder.fechaFin}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
-
                 if (reminder.cumplido) {
-                    Text(
-                        text = "✔ Cumplido",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF388E3C),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    Text("Cumplido", style = MaterialTheme.typography.labelSmall, color = Color(0xFF388E3C))
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    IconButton(onClick = {
-                        println("Lápiz presionado")
-                        showEditDialog = true
-                    }) {
+                    IconButton(onClick = { showEditDialog = true }) {
                         Icon(Icons.Default.Edit, contentDescription = "Editar")
+                    }
+                    IconButton(onClick = { showDeleteConfirm = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                     }
                 }
             }
@@ -199,6 +212,27 @@ fun ReminderItem(
                 onSave = {
                     onEdit(it)
                     showEditDialog = false
+                }
+            )
+        }
+
+        if (showDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                title = { Text("¿Eliminar recordatorio?") },
+                text = { Text("Esta acción no se puede deshacer.") },
+                confirmButton = {
+                    Button(onClick = {
+                        onDelete(reminder)
+                        showDeleteConfirm = false
+                    }) {
+                        Text("Eliminar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) {
+                        Text("Cancelar")
+                    }
                 }
             )
         }

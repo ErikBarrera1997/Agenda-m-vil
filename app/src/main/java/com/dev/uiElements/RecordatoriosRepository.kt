@@ -16,4 +16,6 @@ class RecordatoriosRepository(context: Context) {
     suspend fun getAll(): List<Recordatorio> = dao.getAll()
     suspend fun insert(recordatorio: Recordatorio) = dao.insert(recordatorio)
     suspend fun update(recordatorio: Recordatorio) = dao.update(recordatorio)
+    suspend fun delete(recordatorio: Recordatorio) = dao.delete(recordatorio)
+
 }

@@ -32,4 +32,13 @@ class RecordatoriosViewModel(private val repository: RecordatoriosRepository) : 
             _recordatorios.addAll(repository.getAll())
         }
     }
+
+    fun eliminarRecordatorio(recordatorio: Recordatorio) {
+        viewModelScope.launch {
+            repository.delete(recordatorio)
+            _recordatorios.clear()
+            _recordatorios.addAll(repository.getAll())
+        }
+    }
+
 }

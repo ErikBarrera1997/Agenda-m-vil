@@ -1,6 +1,8 @@
 package com.dev.uiElements
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +48,9 @@ fun EditarRecordatorioDialog(
     var titulo by remember { mutableStateOf(recordatorio.titulo) }
     var descripcion by remember { mutableStateOf(recordatorio.descripcion) }
     var fechaInicio by remember { mutableStateOf(recordatorio.fechaInicio ?: "") }
+    var horaInicio by remember { mutableStateOf(recordatorio.horaInicio ?: "") }
     var fechaFin by remember { mutableStateOf(recordatorio.fechaFin ?: "") }
+    var horaFin by remember { mutableStateOf(recordatorio.horaFin ?: "") }
     var cumplido by remember { mutableStateOf(recordatorio.cumplido) }
 
     val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -64,6 +68,20 @@ fun EditarRecordatorioDialog(
         ).show()
     }
 
+    fun showTimePicker(onTimeSelected: (String) -> Unit) {
+        val now = Calendar.getInstance()
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                val horaFormateada = String.format("%02d:%02d", hour, minute)
+                onTimeSelected(horaFormateada)
+            },
+            now.get(Calendar.HOUR_OF_DAY),
+            now.get(Calendar.MINUTE),
+            true
+        ).show()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
@@ -73,7 +91,9 @@ fun EditarRecordatorioDialog(
                         titulo = titulo,
                         descripcion = descripcion,
                         fechaInicio = fechaInicio,
+                        horaInicio = horaInicio,
                         fechaFin = fechaFin,
+                        horaFin = horaFin,
                         cumplido = cumplido
                     )
                 )
@@ -102,22 +122,36 @@ fun EditarRecordatorioDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Fecha de inicio", style = MaterialTheme.typography.labelSmall)
+                Text("Fecha de inicio")
                 OutlinedButton(
                     onClick = { showDatePicker { fechaInicio = it } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (fechaInicio.isEmpty()) "Seleccionar fecha" else fechaInicio)
+                    Text(fechaInicio.ifEmpty { "Seleccionar fecha" })
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Text("Hora de inicio")
+                OutlinedButton(
+                    onClick = { showTimePicker { horaInicio = it } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(horaInicio.ifEmpty { "Seleccionar hora" })
+                }
 
-                Text("Fecha de fin", style = MaterialTheme.typography.labelSmall)
+                Text("Fecha de fin")
                 OutlinedButton(
                     onClick = { showDatePicker { fechaFin = it } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (fechaFin.isEmpty()) "Seleccionar fecha" else fechaFin)
+                    Text(fechaFin.ifEmpty { "Seleccionar fecha" })
+                }
+
+                Text("Hora de fin")
+                OutlinedButton(
+                    onClick = { showTimePicker { horaFin = it } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(horaFin.ifEmpty { "Seleccionar hora" })
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -143,19 +177,6 @@ fun EditarRecordatorioDialog(
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewEditarRecordatorioDialog() {
-    EditarRecordatorioDialog(
-        recordatorio = Recordatorio(
-            id = 1,
-            titulo = "Curso de Phyton",
-            descripcion = "",
-            fechaInicio = "10/Octubre/2025",
-            fechaFin = "30/Noviembre/2025",
-            //cumplido = true
-        ),
-        onDismiss = {},
-        onSave = {}
-    )
-}
+
+
+

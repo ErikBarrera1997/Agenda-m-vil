@@ -10,5 +10,7 @@ data class Recordatorio(
     val descripcion: String,
     val fechaInicio: String? = null,
     val fechaFin: String? = null,
-    val cumplido: Boolean = false
+    val horaInicio: String?,
+    val horaFin: String?,
+    val cumplido: Boolean = false,
 )

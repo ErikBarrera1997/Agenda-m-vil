@@ -1,59 +1,32 @@
 package com.dev.uiElements
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import android.app.TimePickerDialog
+import android.content.Context
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.dev.Dao.Recordatorio
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.dev.Dao.Recordatorio
+import com.dev.agenda_movil.MainActivity
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
-fun RecordatoriosScreen() {
+fun RecordatoriosScreen(
+    onRecordatorioAgregado: (Recordatorio) -> Unit
+) {
     val context = LocalContext.current
+    val activity = context as? MainActivity
     val viewModel: RecordatoriosViewModel = viewModel(
         factory = RecordatoriosViewModelFactory(context)
     )
@@ -66,8 +39,7 @@ fun RecordatoriosScreen() {
             viewModel.recordatorios
         } else {
             viewModel.recordatorios.filter {
-                it.titulo.contains(searchQuery, ignoreCase = true) ||
-                        it.descripcion.contains(searchQuery, ignoreCase = true)
+                it.titulo.contains(searchQuery, ignoreCase = true)
             }
         }
     }
@@ -85,17 +57,24 @@ fun RecordatoriosScreen() {
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 label = { Text("Buscar recordatorio") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Buscar"
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 singleLine = true
             )
 
+
             ReminderList(
                 reminders = recordatoriosFiltrados,
                 onEdit = { actualizado -> viewModel.editarRecordatorio(actualizado) },
-                onDelete = { eliminado -> viewModel.eliminarRecordatorio(eliminado) }
-
+                onDelete = { eliminado -> viewModel.eliminarRecordatorio(eliminado) },
+                activity = activity
             )
         }
 
@@ -104,6 +83,7 @@ fun RecordatoriosScreen() {
                 onDismiss = { showDialog = false },
                 onSave = { nuevo ->
                     viewModel.agregarRecordatorio(nuevo)
+                    activity?.programarNotificacionesPorFechas(nuevo) // ✅ se programa al crear
                     showDialog = false
                 }
             )
@@ -129,35 +109,22 @@ fun TopBar(onAddClick: () -> Unit) {
     )
 }
 
-@Composable
-fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        label = { Text("Buscar recordatorio") },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        singleLine = true
-    )
-}
 
 
 @Composable
 fun ReminderList(
     reminders: List<Recordatorio>,
     onEdit: (Recordatorio) -> Unit,
-    onDelete: (Recordatorio) -> Unit
+    onDelete: (Recordatorio) -> Unit,
+    activity: MainActivity?
 ) {
     LazyColumn {
         itemsIndexed(reminders) { _, reminder ->
             ReminderItem(
                 reminder = reminder,
-                onEdit = { actualizado -> onEdit(actualizado) },
-                onDelete = { eliminado -> onDelete(eliminado) }
+                onEdit = onEdit,
+                onDelete = onDelete,
+                activity = activity
             )
         }
     }
@@ -168,7 +135,8 @@ fun ReminderList(
 fun ReminderItem(
     reminder: Recordatorio,
     onEdit: (Recordatorio) -> Unit,
-    onDelete: (Recordatorio) -> Unit
+    onDelete: (Recordatorio) -> Unit,
+    activity: MainActivity?
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -214,6 +182,7 @@ fun ReminderItem(
                 onDismiss = { showEditDialog = false },
                 onSave = {
                     onEdit(it)
+                    activity?.programarNotificacionesPorFechas(it)
                     showEditDialog = false
                 }
             )
@@ -256,6 +225,8 @@ fun AddReminderDialog(
     var fechaInicio by remember { mutableStateOf("") }
     var fechaFin by remember { mutableStateOf("") }
     var cumplido by remember { mutableStateOf(false) }
+    var horaInicio by remember { mutableStateOf("") }
+    var horaFin by remember { mutableStateOf("") }
 
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
@@ -278,7 +249,9 @@ fun AddReminderDialog(
                     titulo = titulo,
                     descripcion = descripcion,
                     fechaInicio = fechaInicio,
+                    horaInicio = horaInicio,
                     fechaFin = fechaFin,
+                    horaFin = horaFin,
                     cumplido = cumplido
                 )
                 onSave(nuevo)
@@ -315,6 +288,16 @@ fun AddReminderDialog(
                     Text(if (fechaInicio.isEmpty()) "Seleccionar fecha" else fechaInicio)
                 }
 
+
+                Text("Hora de inicio", style = MaterialTheme.typography.labelSmall)
+                OutlinedButton(
+                    onClick = { showTimePicker(context) { horaInicio = it } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (horaFin.isEmpty()) "Seleccionar hora" else horaFin)
+                }
+
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text("Fecha de fin", style = MaterialTheme.typography.labelSmall)
@@ -325,22 +308,43 @@ fun AddReminderDialog(
                     Text(if (fechaFin.isEmpty()) "Seleccionar fecha" else fechaFin)
                 }
 
+                Text("Hora de fin", style = MaterialTheme.typography.labelSmall)
+                OutlinedButton(
+                    onClick = { showTimePicker(context) { horaFin  = it } }
+                    ,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (horaFin.isEmpty()) "Seleccionar hora" else horaFin)
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = cumplido, onCheckedChange = { cumplido = it })
                     Text("Cumplido", modifier = Modifier.padding(start = 8.dp))
                 }
+
             }
         }
     )
 }
 
 
-
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewRecordatoriosScreen() {
-    RecordatoriosScreen()
+fun showTimePicker(context: Context, onTimeSelected: (String) -> Unit) {
+    val now = Calendar.getInstance()
+    TimePickerDialog(
+        context,
+        { _, hour, minute ->
+            val horaFormateada = String.format("%02d:%02d", hour, minute)
+            onTimeSelected(horaFormateada)
+        },
+        now.get(Calendar.HOUR_OF_DAY),
+        now.get(Calendar.MINUTE),
+        true
+    ).show()
 }
+
+
+
+
+

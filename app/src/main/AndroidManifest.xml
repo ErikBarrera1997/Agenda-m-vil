@@ -11,7 +11,9 @@
             android:fullBackupContent="@xml/backup_rules"
             android:label="@string/app_name"
             android:supportsRtl="true"
-            android:theme="@style/Theme.Agenda_movil">
+            android:theme="@style/Theme.Agenda_movil"
+            android:name=".AgendaApplication">
+
         <activity
                 android:name=".MainActivity"
                 android:exported="true"
@@ -23,6 +25,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <receiver android:name="com.dev.notifications.NotificacionReceiver" />
     </application>
 
 </manifest>

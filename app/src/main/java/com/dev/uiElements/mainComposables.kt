@@ -6,6 +6,8 @@ import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -226,6 +230,8 @@ fun AddReminderDialog(
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     var formState by remember { mutableStateOf(RecordatorioFormState()) }
+    val focusManager = LocalFocusManager.current
+
 
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
@@ -293,7 +299,11 @@ fun AddReminderDialog(
                     value = formState.titulo,
                     onValueChange = { formState = formState.copy(titulo = it) },
                     label = { Text("Título") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = { focusManager.clearFocus() }
+                    )
                 )
                 if (formState.showErrors && formState.titulo.isBlank()) {
                     Text("El título no puede estar vacío", color = Color.Red, style = MaterialTheme.typography.labelSmall)
@@ -303,8 +313,13 @@ fun AddReminderDialog(
                     value = formState.descripcion,
                     onValueChange = { formState = formState.copy(descripcion = it) },
                     label = { Text("Descripción") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = { focusManager.clearFocus() }
+                    )
                 )
+
                 if (formState.showErrors && formState.descripcion.isBlank()) {
                     Text("La descripción no puede estar vacía", color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
@@ -314,7 +329,7 @@ fun AddReminderDialog(
                     onClick = { showDatePicker { formState = formState.copy(fechaInicio = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (formState.fechaInicio.isEmpty()) "Seleccionar fecha" else formState.fechaInicio)
+                    Text(formState.fechaInicio.ifEmpty { "Seleccionar fecha" })
                 }
 
                 Text("Hora de inicio")
@@ -322,7 +337,7 @@ fun AddReminderDialog(
                     onClick = { showTimePicker { formState = formState.copy(horaInicio = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (formState.horaInicio.isEmpty()) "Seleccionar hora" else formState.horaInicio)
+                    Text(formState.horaInicio.ifEmpty { "Seleccionar hora" })
                 }
 
                 Text("Fecha de fin")
@@ -330,7 +345,7 @@ fun AddReminderDialog(
                     onClick = { showDatePicker { formState = formState.copy(fechaFin = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (formState.fechaFin.isEmpty()) "Seleccionar fecha" else formState.fechaFin)
+                    Text(formState.fechaFin.ifEmpty { "Seleccionar fecha" })
                 }
                 if (formState.showErrors && formState.fechaFin.isBlank()) {
                     Text("La fecha de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
@@ -341,7 +356,7 @@ fun AddReminderDialog(
                     onClick = { showTimePicker { formState = formState.copy(horaFin = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (formState.horaFin.isEmpty()) "Seleccionar hora" else formState.horaFin)
+                    Text(formState.horaFin.ifEmpty { "Seleccionar hora" })
                 }
                 if (formState.showErrors && formState.horaFin.isBlank()) {
                     Text("La hora de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
@@ -371,7 +386,7 @@ fun AddReminderScreen(onBack: () -> Unit) {
         onDismiss = onBack,
         onSave = { nuevo ->
             viewModel.agregar(nuevo)
-            //activity?.programarNotificacionesPorFechas(nuevo)
+            activity?.programarNotificacionesPorFechas(nuevo)
             onBack()
         }
     )

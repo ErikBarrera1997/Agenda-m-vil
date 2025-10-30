@@ -30,6 +30,8 @@ import com.dev.uiElements.AddReminderScreen
 import com.dev.uiElements.EditReminderScreen
 import com.dev.uiElements.RecordatoriosScreen
 import com.dev.uiElements.Screen
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 
 class MainActivity : ComponentActivity() {
@@ -77,6 +79,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+
+    }
     fun crearCanalDeNotificacion(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val canal = NotificationChannel(
@@ -135,7 +139,33 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(context, "Error al programar la notificación: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
-}
+
+    fun programarNotificacionesPorFechas(recordatorio: Recordatorio) {
+        recordatorio.fechaInicio?.let { fecha ->
+            recordatorio.horaInicio?.let { hora ->
+                val trigger = convertirFechaHoraATimestamp(fecha, hora)
+                programarNotificacion(this, recordatorio, trigger)
+            }
+        }
+
+        recordatorio.fechaFin?.let { fecha ->
+            recordatorio.horaFin?.let { hora ->
+                val trigger = convertirFechaHoraATimestamp(fecha, hora)
+                programarNotificacion(this, recordatorio, trigger)
+            }
+        }
+    }
+
+    fun convertirFechaHoraATimestamp(fecha: String, hora: String): Long {
+        val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+        return try {
+            formato.parse("$fecha $hora")?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
+
+
 }
 
 

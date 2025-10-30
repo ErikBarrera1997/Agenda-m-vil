@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -30,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -51,6 +55,8 @@ fun EditarRecordatorioDialog(
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val focusManager = LocalFocusManager.current
+
 
     var formState by remember {
         mutableStateOf(
@@ -132,8 +138,13 @@ fun EditarRecordatorioDialog(
                     value = formState.titulo,
                     onValueChange = { formState = formState.copy(titulo = it) },
                     label = { Text("Título") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = { focusManager.clearFocus() }
+                    )
                 )
+
                 if (formState.showErrors && formState.titulo.isBlank()) {
                     Text("El título no puede estar vacío", color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
@@ -142,8 +153,13 @@ fun EditarRecordatorioDialog(
                     value = formState.descripcion,
                     onValueChange = { formState = formState.copy(descripcion = it) },
                     label = { Text("Descripción") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = { focusManager.clearFocus() }
+                    )
                 )
+
                 if (formState.showErrors && formState.descripcion.isBlank()) {
                     Text("La descripción no puede estar vacía", color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
@@ -154,7 +170,7 @@ fun EditarRecordatorioDialog(
                     onClick = { showDatePicker { formState = formState.copy(fechaInicio = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (formState.fechaInicio.isEmpty()) "Seleccionar fecha" else formState.fechaInicio)
+                    Text(formState.fechaInicio.ifEmpty { "Seleccionar fecha" })
                 }
 
                 Text("Hora de inicio", style = MaterialTheme.typography.labelSmall)
@@ -162,7 +178,7 @@ fun EditarRecordatorioDialog(
                     onClick = { showTimePicker { formState = formState.copy(horaInicio = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (formState.horaInicio.isEmpty()) "Seleccionar hora" else formState.horaInicio)
+                    Text(formState.horaInicio.ifEmpty { "Seleccionar hora" })
                 }
 
                 Text("Fecha de fin", style = MaterialTheme.typography.labelSmall)
@@ -170,7 +186,7 @@ fun EditarRecordatorioDialog(
                     onClick = { showDatePicker { formState = formState.copy(fechaFin = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (formState.fechaFin.isEmpty()) "Seleccionar fecha" else formState.fechaFin)
+                    Text(formState.fechaFin.ifEmpty { "Seleccionar fecha" })
                 }
                 if (formState.showErrors && formState.fechaFin.isBlank()) {
                     Text("La fecha de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
@@ -182,7 +198,7 @@ fun EditarRecordatorioDialog(
                     onClick = { showTimePicker { formState = formState.copy(horaFin = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (formState.horaFin.isEmpty()) "Seleccionar hora" else formState.horaFin)
+                    Text(formState.horaFin.ifEmpty { "Seleccionar hora" })
                 }
                 if (formState.showErrors && formState.horaFin.isBlank()) {
                     Text("La hora de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
@@ -221,17 +237,20 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
     val context = LocalContext.current
     val activity = context as? MainActivity
     val recordatorio by viewModel.getById(recordatorioId).collectAsState(initial = null)
+    var mostrado by remember { mutableStateOf(false) }
 
-    recordatorio?.let {
-        EditarRecordatorioDialog(
-            recordatorio = it,
-            onDismiss = onBack,
-            onSave = { actualizado ->
-                viewModel.editar(actualizado)
-                //activity?.programarNotificacionesPorFechas(actualizado)
-                onBack()
-            }
-        )
+    if (recordatorio != null && !mostrado) {
+        recordatorio?.let {
+            EditarRecordatorioDialog(
+                recordatorio = it,
+                onDismiss = onBack,
+                onSave = { actualizado ->
+                    viewModel.editar(actualizado)
+                    activity?.programarNotificacionesPorFechas(actualizado)
+                    onBack()
+                }
+            )
+        }
     }
 }
 

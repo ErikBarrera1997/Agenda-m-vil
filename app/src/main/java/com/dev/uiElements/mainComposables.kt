@@ -15,39 +15,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.dev.Dao.Recordatorio
+import com.dev.Data.RecordatorioFormState
+import com.dev.agenda_movil.AppViewModelProvider
 import com.dev.agenda_movil.MainActivity
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
 fun RecordatoriosScreen(
-    onRecordatorioAgregado: (Recordatorio) -> Unit
+    navController: NavController
 ) {
     val context = LocalContext.current
     val activity = context as? MainActivity
-    val viewModel: RecordatoriosViewModel = viewModel(
-        factory = RecordatoriosViewModelFactory(context)
-    )
-
-    var showDialog by remember { mutableStateOf(false) }
+    val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
     var searchQuery by remember { mutableStateOf("") }
+    val recordatorios by viewModel.recordatorios.collectAsState()
 
-    val recordatoriosFiltrados = remember(searchQuery, viewModel.recordatorios) {
+    val recordatoriosFiltrados = remember(searchQuery, recordatorios) {
         if (searchQuery.isBlank()) {
-            viewModel.recordatorios
+            recordatorios
         } else {
-            viewModel.recordatorios.filter {
+            recordatorios.filter {
                 it.titulo.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
     Scaffold(
-        topBar = { TopBar(onAddClick = { showDialog = true }) },
+        topBar = {
+            TopBar(onAddClick = { navController.navigate(Screen.Agregar.route) })
+        },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(onClick = { navController.navigate(Screen.Agregar.route) }) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar")
             }
         }
@@ -58,10 +61,7 @@ fun RecordatoriosScreen(
                 onValueChange = { searchQuery = it },
                 label = { Text("Buscar recordatorio") },
                 leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Buscar"
-                    )
+                    Icon(imageVector = Icons.Default.Search, contentDescription = "Buscar")
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -69,23 +69,15 @@ fun RecordatoriosScreen(
                 singleLine = true
             )
 
-
             ReminderList(
                 reminders = recordatoriosFiltrados,
-                onEdit = { actualizado -> viewModel.editarRecordatorio(actualizado) },
-                onDelete = { eliminado -> viewModel.eliminarRecordatorio(eliminado) },
+                onEdit = { actualizado ->
+                    navController.navigate(Screen.Editar.createRoute(actualizado.id))
+                },
+                onDelete = { eliminado ->
+                    viewModel.eliminar(eliminado)
+                },
                 activity = activity
-            )
-        }
-
-        if (showDialog) {
-            AddReminderDialog(
-                onDismiss = { showDialog = false },
-                onSave = { nuevo ->
-                    viewModel.agregarRecordatorio(nuevo)
-                    activity?.programarNotificacionesPorFechas(nuevo) // ✅ se programa al crear
-                    showDialog = false
-                }
             )
         }
     }
@@ -153,13 +145,25 @@ fun ReminderItem(
                 Text(text = reminder.descripcion, style = MaterialTheme.typography.bodyMedium)
 
                 if (!reminder.fechaInicio.isNullOrBlank()) {
-                    Text("Inicio: ${reminder.fechaInicio}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(
+                        text = "Inicio: ${reminder.fechaInicio}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
                 }
                 if (!reminder.fechaFin.isNullOrBlank()) {
-                    Text("Fin: ${reminder.fechaFin}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(
+                        text = "Fin: ${reminder.fechaFin}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
                 }
                 if (reminder.cumplido) {
-                    Text("Cumplido", style = MaterialTheme.typography.labelSmall, color = Color(0xFF388E3C))
+                    Text(
+                        text = "Cumplido",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF388E3C)
+                    )
                 }
 
                 Row(
@@ -167,10 +171,10 @@ fun ReminderItem(
                     horizontalArrangement = Arrangement.End
                 ) {
                     IconButton(onClick = { showEditDialog = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar")
+                        Icon(Icons.Default.Edit, contentDescription = "Editar recordatorio")
                     }
                     IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Eliminar")
+                        Icon(Icons.Default.Delete, contentDescription = "Eliminar recordatorio")
                     }
                 }
             }
@@ -182,7 +186,7 @@ fun ReminderItem(
                 onDismiss = { showEditDialog = false },
                 onSave = {
                     onEdit(it)
-                    activity?.programarNotificacionesPorFechas(it)
+                    // activity?.programarNotificacionesPorFechas(it)
                     showEditDialog = false
                 }
             )
@@ -191,6 +195,7 @@ fun ReminderItem(
         if (showDeleteConfirm) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
+                properties = DialogProperties(dismissOnClickOutside = false),
                 title = { Text("¿Eliminar recordatorio?") },
                 text = { Text("Esta acción no se puede deshacer.") },
                 confirmButton = {
@@ -217,16 +222,10 @@ fun AddReminderDialog(
     onSave: (Recordatorio) -> Unit
 ) {
     val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val calendar = remember { Calendar.getInstance() }
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
-    var titulo by remember { mutableStateOf("") }
-    var descripcion by remember { mutableStateOf("") }
-    var fechaInicio by remember { mutableStateOf("") }
-    var fechaFin by remember { mutableStateOf("") }
-    var cumplido by remember { mutableStateOf(false) }
-    var horaInicio by remember { mutableStateOf("") }
-    var horaFin by remember { mutableStateOf("") }
+    var formState by remember { mutableStateOf(RecordatorioFormState()) }
 
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
@@ -241,94 +240,142 @@ fun AddReminderDialog(
         ).show()
     }
 
+    fun showTimePicker(onTimeSelected: (String) -> Unit) {
+        val now = Calendar.getInstance()
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                val hora = String.format("%02d:%02d", hour, minute)
+                onTimeSelected(hora)
+            },
+            now.get(Calendar.HOUR_OF_DAY),
+            now.get(Calendar.MINUTE),
+            true
+        ).show()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnClickOutside = false),
         confirmButton = {
             Button(onClick = {
-                val nuevo = Recordatorio(
-                    titulo = titulo,
-                    descripcion = descripcion,
-                    fechaInicio = fechaInicio,
-                    horaInicio = horaInicio,
-                    fechaFin = fechaFin,
-                    horaFin = horaFin,
-                    cumplido = cumplido
-                )
-                onSave(nuevo)
+                val camposValidos = formState.titulo.isNotBlank() &&
+                        formState.descripcion.isNotBlank() &&
+                        formState.fechaFin.isNotBlank() &&
+                        formState.horaFin.isNotBlank()
+
+                if (camposValidos) {
+                    val nuevo = Recordatorio(
+                        titulo = formState.titulo,
+                        descripcion = formState.descripcion,
+                        fechaInicio = formState.fechaInicio.ifBlank { null },
+                        horaInicio = formState.horaInicio.ifBlank { null },
+                        fechaFin = formState.fechaFin.ifBlank { null },
+                        horaFin = formState.horaFin.ifBlank { null },
+                        cumplido = formState.cumplido
+                    )
+                    onSave(nuevo)
+                } else {
+                    formState = formState.copy(showErrors = true)
+                }
             }) {
                 Text("Guardar")
             }
+
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
         },
         title = { Text("Nuevo Recordatorio") },
         text = {
             Column {
                 OutlinedTextField(
-                    value = titulo,
-                    onValueChange = { titulo = it },
+                    value = formState.titulo,
+                    onValueChange = { formState = formState.copy(titulo = it) },
                     label = { Text("Título") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (formState.showErrors && formState.titulo.isBlank()) {
+                    Text("El título no puede estar vacío", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                }
+
                 OutlinedTextField(
-                    value = descripcion,
-                    onValueChange = { descripcion = it },
+                    value = formState.descripcion,
+                    onValueChange = { formState = formState.copy(descripcion = it) },
                     label = { Text("Descripción") },
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Text("Fecha de inicio", style = MaterialTheme.typography.labelSmall)
-                OutlinedButton(
-                    onClick = { showDatePicker { fechaInicio = it } },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (fechaInicio.isEmpty()) "Seleccionar fecha" else fechaInicio)
+                if (formState.showErrors && formState.descripcion.isBlank()) {
+                    Text("La descripción no puede estar vacía", color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
-
-                Text("Hora de inicio", style = MaterialTheme.typography.labelSmall)
+                Text("Fecha de inicio")
                 OutlinedButton(
-                    onClick = { showTimePicker(context) { horaInicio = it } },
+                    onClick = { showDatePicker { formState = formState.copy(fechaInicio = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (horaFin.isEmpty()) "Seleccionar hora" else horaFin)
+                    Text(if (formState.fechaInicio.isEmpty()) "Seleccionar fecha" else formState.fechaInicio)
                 }
 
+                Text("Hora de inicio")
+                OutlinedButton(
+                    onClick = { showTimePicker { formState = formState.copy(horaInicio = it) } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (formState.horaInicio.isEmpty()) "Seleccionar hora" else formState.horaInicio)
+                }
+
+                Text("Fecha de fin")
+                OutlinedButton(
+                    onClick = { showDatePicker { formState = formState.copy(fechaFin = it) } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (formState.fechaFin.isEmpty()) "Seleccionar fecha" else formState.fechaFin)
+                }
+                if (formState.showErrors && formState.fechaFin.isBlank()) {
+                    Text("La fecha de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                }
+
+                Text("Hora de fin")
+                OutlinedButton(
+                    onClick = { showTimePicker { formState = formState.copy(horaFin = it) } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (formState.horaFin.isEmpty()) "Seleccionar hora" else formState.horaFin)
+                }
+                if (formState.showErrors && formState.horaFin.isBlank()) {
+                    Text("La hora de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Text("Fecha de fin", style = MaterialTheme.typography.labelSmall)
-                OutlinedButton(
-                    onClick = { showDatePicker { fechaFin = it } },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (fechaFin.isEmpty()) "Seleccionar fecha" else fechaFin)
-                }
-
-                Text("Hora de fin", style = MaterialTheme.typography.labelSmall)
-                OutlinedButton(
-                    onClick = { showTimePicker(context) { horaFin  = it } }
-                    ,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (horaFin.isEmpty()) "Seleccionar hora" else horaFin)
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = cumplido, onCheckedChange = { cumplido = it })
+                    Checkbox(
+                        checked = formState.cumplido,
+                        onCheckedChange = { formState = formState.copy(cumplido = it) }
+                    )
                     Text("Cumplido", modifier = Modifier.padding(start = 8.dp))
                 }
-
             }
         }
     )
 }
 
+
+@Composable
+fun AddReminderScreen(onBack: () -> Unit) {
+    val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
+    val context = LocalContext.current
+    val activity = context as? MainActivity
+
+    AddReminderDialog(
+        onDismiss = onBack,
+        onSave = { nuevo ->
+            viewModel.agregar(nuevo)
+            //activity?.programarNotificacionesPorFechas(nuevo)
+            onBack()
+        }
+    )
+}
 
 fun showTimePicker(context: Context, onTimeSelected: (String) -> Unit) {
     val now = Calendar.getInstance()

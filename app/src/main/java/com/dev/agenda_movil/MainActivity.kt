@@ -10,31 +10,32 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresPermission
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.dev.Dao.Recordatorio
 import com.dev.agenda_movil.ui.theme.Agenda_movilTheme
 import com.dev.notifications.NotificacionReceiver
+import com.dev.uiElements.AddReminderScreen
+import com.dev.uiElements.EditReminderScreen
 import com.dev.uiElements.RecordatoriosScreen
-import java.text.SimpleDateFormat
-import java.util.*
+import com.dev.uiElements.Screen
 
 
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (!isGranted) {
                 Toast.makeText(this, "No se otorgó permiso para notificaciones", Toast.LENGTH_SHORT).show()
             }
@@ -45,48 +46,36 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
-                }
-                else -> {
-                    requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                }
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         }
 
-        crearCanalDeNotificacion(this)
-
-        val ahora = Calendar.getInstance().apply { add(Calendar.MINUTE, 1) }
-        val fecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(ahora.time)
-        val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(ahora.time)
-
-        val recordatorioPrueba = Recordatorio(
-            titulo = "Prueba rápida",
-            descripcion = "Esta es una notificación de prueba.",
-            fechaInicio = fecha,
-            horaInicio = hora,
-            fechaFin = null,
-            horaFin = null,
-            cumplido = false
-        )
-
-        programarNotificacionesPorFechas(recordatorioPrueba)
+        //crearCanalDeNotificacion(this)
 
         setContent {
             Agenda_movilTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    RecordatoriosScreen(
-                        onRecordatorioAgregado = { recordatorio ->
-                            programarNotificacionesPorFechas(recordatorio)
-                        }
-                    )
+                val navController = rememberNavController()
+
+                NavHost(navController = navController, startDestination = Screen.Lista.route) {
+                    composable(Screen.Lista.route) {
+                        RecordatoriosScreen(navController = navController)
+                    }
+
+                    composable(Screen.Agregar.route) {
+                        AddReminderScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable(
+                        route = Screen.Editar.route,
+                        arguments = listOf(navArgument("id") { type = NavType.IntType })
+                    ) { backStackEntry ->
+                        val id = backStackEntry.arguments?.getInt("id") ?: return@composable
+                        EditReminderScreen(recordatorioId = id, onBack = { navController.popBackStack() })
+                    }
                 }
             }
         }
-    }
 
     fun crearCanalDeNotificacion(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -146,37 +135,7 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(context, "Error al programar la notificación: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
-
-    fun programarNotificacionesPorFechas(recordatorio: Recordatorio) {
-        val fechaInicioMillis = combinarFechaYHora(recordatorio.fechaInicio, recordatorio.horaInicio)
-        val fechaFinMillis = combinarFechaYHora(recordatorio.fechaFin, recordatorio.horaFin)
-
-        if (fechaInicioMillis != null && fechaInicioMillis > System.currentTimeMillis()) {
-            val inicioRecordatorio = recordatorio.copy(
-                titulo = recordatorio.titulo,
-                descripcion = "El recordatorio '${recordatorio.titulo}' ha comenzado."
-            )
-            programarNotificacion(this, inicioRecordatorio, fechaInicioMillis)
-        }
-
-        if (fechaFinMillis != null && fechaFinMillis > System.currentTimeMillis()) {
-            val finRecordatorio = recordatorio.copy(
-                titulo = recordatorio.titulo,
-                descripcion = "El recordatorio '${recordatorio.titulo}' ha finalizado."
-
-            )
-            programarNotificacion(this, finRecordatorio, fechaFinMillis)
-        }
-    }
-
-    fun combinarFechaYHora(fecha: String?, hora: String?): Long? {
-        if (fecha.isNullOrBlank() || hora.isNullOrBlank()) return null
-        return try {
-            val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-            formato.parse("$fecha $hora")?.time
-        } catch (e: Exception) { null }
-    }
-
+}
 }
 
 

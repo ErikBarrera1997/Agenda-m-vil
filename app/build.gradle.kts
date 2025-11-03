@@ -47,6 +47,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3-window-size-class")
     implementation("androidx.benchmark:benchmark-traceprocessor-android:1.4.1")
     //implementation("androidx.databinding:compiler:3.2.0-alpha11")
     implementation("androidx.navigation:navigation-compose:2.7.7")

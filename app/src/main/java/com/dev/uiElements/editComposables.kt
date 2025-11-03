@@ -20,13 +20,19 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,8 +46,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dev.Dao.Recordatorio
 import com.dev.Data.RecordatorioFormState
+import com.dev.Data.RecordatorioFormStateSaver
 import com.dev.agenda_movil.AppViewModelProvider
 import com.dev.agenda_movil.MainActivity
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -58,19 +66,22 @@ fun EditarRecordatorioDialog(
     val focusManager = LocalFocusManager.current
 
 
-    var formState by remember {
-        mutableStateOf(
-            RecordatorioFormState(
-                titulo = recordatorio.titulo,
-                descripcion = recordatorio.descripcion,
-                fechaInicio = recordatorio.fechaInicio ?: "",
-                horaInicio = recordatorio.horaInicio ?: "",
-                fechaFin = recordatorio.fechaFin ?: "",
-                horaFin = recordatorio.horaFin ?: "",
-                cumplido = recordatorio.cumplido
-            )
+    val initialFormState = remember(recordatorio.id) {
+        RecordatorioFormState(
+            titulo = recordatorio.titulo,
+            descripcion = recordatorio.descripcion,
+            fechaInicio = recordatorio.fechaInicio ?: "",
+            horaInicio = recordatorio.horaInicio ?: "",
+            fechaFin = recordatorio.fechaFin ?: "",
+            horaFin = recordatorio.horaFin ?: "",
+            cumplido = recordatorio.cumplido
         )
     }
+
+    var formState by rememberSaveable(stateSaver = RecordatorioFormStateSaver()) {
+        mutableStateOf(initialFormState)
+    }
+
 
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
@@ -98,6 +109,8 @@ fun EditarRecordatorioDialog(
             true
         ).show()
     }
+
+
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -223,7 +236,7 @@ fun EditarRecordatorioDialog(
                         .background(Color.LightGray),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Controles de audio aquí")
+                    Text("Agregar audio")
                 }
             }
         }
@@ -236,20 +249,42 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
     val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
     val context = LocalContext.current
     val activity = context as? MainActivity
-    val recordatorio by viewModel.getById(recordatorioId).collectAsState(initial = null)
-    var mostrado by remember { mutableStateOf(false) }
 
-    if (recordatorio != null && !mostrado) {
-        recordatorio?.let {
-            EditarRecordatorioDialog(
-                recordatorio = it,
-                onDismiss = onBack,
-                onSave = { actualizado ->
-                    viewModel.editar(actualizado)
-                    activity?.programarNotificacionesPorFechas(actualizado)
-                    onBack()
+    val recordatorio by viewModel.getById(recordatorioId).collectAsState(initial = null)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var mostrarDialogo by remember { mutableStateOf(false) }
+
+    LaunchedEffect(recordatorio) {
+        if (recordatorio != null) {
+            mostrarDialogo = true
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Box(modifier = Modifier.padding(padding)) {
+            recordatorio?.let { recordatorioActual ->
+                if (mostrarDialogo) {
+                    EditarRecordatorioDialog(
+                        recordatorio = recordatorioActual,
+                        onDismiss = {
+                            mostrarDialogo = false
+                            onBack()
+                        },
+                        onSave = { actualizado ->
+                            viewModel.editar(actualizado)
+                            activity?.programarNotificacionesPorFechas(actualizado)
+                            mostrarDialogo = false
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Recordatorio editado")
+                            }
+                            onBack()
+                        }
+                    )
                 }
-            )
+            }
         }
     }
 }

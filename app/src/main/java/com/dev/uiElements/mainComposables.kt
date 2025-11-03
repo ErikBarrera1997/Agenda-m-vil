@@ -26,6 +26,7 @@ import com.dev.Dao.Recordatorio
 import com.dev.Data.RecordatorioFormState
 import com.dev.agenda_movil.AppViewModelProvider
 import com.dev.agenda_movil.MainActivity
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -134,7 +135,6 @@ fun ReminderItem(
     onDelete: (Recordatorio) -> Unit,
     activity: MainActivity?
 ) {
-    var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Box {
@@ -174,7 +174,7 @@ fun ReminderItem(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    IconButton(onClick = { showEditDialog = true }) {
+                    IconButton(onClick = { onEdit(reminder) }) {
                         Icon(Icons.Default.Edit, contentDescription = "Editar recordatorio")
                     }
                     IconButton(onClick = { showDeleteConfirm = true }) {
@@ -182,18 +182,6 @@ fun ReminderItem(
                     }
                 }
             }
-        }
-
-        if (showEditDialog) {
-            EditarRecordatorioDialog(
-                recordatorio = reminder,
-                onDismiss = { showEditDialog = false },
-                onSave = {
-                    onEdit(it)
-                    // activity?.programarNotificacionesPorFechas(it)
-                    showEditDialog = false
-                }
-            )
         }
 
         if (showDeleteConfirm) {
@@ -228,10 +216,9 @@ fun AddReminderDialog(
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
-
-    var formState by remember { mutableStateOf(RecordatorioFormState()) }
     val focusManager = LocalFocusManager.current
-
+    val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
+    val formState = viewModel.formState.value
 
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
@@ -265,45 +252,30 @@ fun AddReminderDialog(
         properties = DialogProperties(dismissOnClickOutside = false),
         confirmButton = {
             Button(onClick = {
-                val camposValidos = formState.titulo.isNotBlank() &&
-                        formState.descripcion.isNotBlank() &&
-                        formState.fechaFin.isNotBlank() &&
-                        formState.horaFin.isNotBlank()
-
-                if (camposValidos) {
-                    val nuevo = Recordatorio(
-                        titulo = formState.titulo,
-                        descripcion = formState.descripcion,
-                        fechaInicio = formState.fechaInicio.ifBlank { null },
-                        horaInicio = formState.horaInicio.ifBlank { null },
-                        fechaFin = formState.fechaFin.ifBlank { null },
-                        horaFin = formState.horaFin.ifBlank { null },
-                        cumplido = formState.cumplido
-                    )
-                    onSave(nuevo)
-                } else {
-                    formState = formState.copy(showErrors = true)
+                viewModel.validarYConstruir()?.let { recordatorio ->
+                    onSave(recordatorio)
+                    viewModel.limpiarFormulario()
                 }
             }) {
                 Text("Guardar")
             }
-
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = {
+                viewModel.limpiarFormulario()
+                onDismiss()
+            }) { Text("Cancelar") }
         },
         title = { Text("Nuevo Recordatorio") },
         text = {
             Column {
                 OutlinedTextField(
                     value = formState.titulo,
-                    onValueChange = { formState = formState.copy(titulo = it) },
+                    onValueChange = { viewModel.actualizarCampo { copy(titulo = it) } },
                     label = { Text("Título") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = { focusManager.clearFocus() }
-                    )
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                 )
                 if (formState.showErrors && formState.titulo.isBlank()) {
                     Text("El título no puede estar vacío", color = Color.Red, style = MaterialTheme.typography.labelSmall)
@@ -311,22 +283,19 @@ fun AddReminderDialog(
 
                 OutlinedTextField(
                     value = formState.descripcion,
-                    onValueChange = { formState = formState.copy(descripcion = it) },
+                    onValueChange = { viewModel.actualizarCampo { copy(descripcion = it) } },
                     label = { Text("Descripción") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = { focusManager.clearFocus() }
-                    )
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                 )
-
                 if (formState.showErrors && formState.descripcion.isBlank()) {
                     Text("La descripción no puede estar vacía", color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
                 Text("Fecha de inicio")
                 OutlinedButton(
-                    onClick = { showDatePicker { formState = formState.copy(fechaInicio = it) } },
+                    onClick = { showDatePicker { viewModel.actualizarCampo { copy(fechaInicio = it) } } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(formState.fechaInicio.ifEmpty { "Seleccionar fecha" })
@@ -334,7 +303,7 @@ fun AddReminderDialog(
 
                 Text("Hora de inicio")
                 OutlinedButton(
-                    onClick = { showTimePicker { formState = formState.copy(horaInicio = it) } },
+                    onClick = { showTimePicker { viewModel.actualizarCampo { copy(horaInicio = it) } } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(formState.horaInicio.ifEmpty { "Seleccionar hora" })
@@ -342,7 +311,7 @@ fun AddReminderDialog(
 
                 Text("Fecha de fin")
                 OutlinedButton(
-                    onClick = { showDatePicker { formState = formState.copy(fechaFin = it) } },
+                    onClick = { showDatePicker { viewModel.actualizarCampo { copy(fechaFin = it) } } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(formState.fechaFin.ifEmpty { "Seleccionar fecha" })
@@ -353,7 +322,7 @@ fun AddReminderDialog(
 
                 Text("Hora de fin")
                 OutlinedButton(
-                    onClick = { showTimePicker { formState = formState.copy(horaFin = it) } },
+                    onClick = { showTimePicker { viewModel.actualizarCampo { copy(horaFin = it) } } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(formState.horaFin.ifEmpty { "Seleccionar hora" })
@@ -366,7 +335,7 @@ fun AddReminderDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = formState.cumplido,
-                        onCheckedChange = { formState = formState.copy(cumplido = it) }
+                        onCheckedChange = { viewModel.actualizarCampo { copy(cumplido = it) } }
                     )
                     Text("Cumplido", modifier = Modifier.padding(start = 8.dp))
                 }
@@ -380,31 +349,43 @@ fun AddReminderDialog(
 fun AddReminderScreen(onBack: () -> Unit) {
     val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
     val context = LocalContext.current
-    val activity = context as? MainActivity
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    AddReminderDialog(
-        onDismiss = onBack,
-        onSave = { nuevo ->
-            viewModel.agregar(nuevo)
-            activity?.programarNotificacionesPorFechas(nuevo)
+    LaunchedEffect(Unit) {
+        viewModel.mostrarDialogoAgregar()
+    }
+
+    LaunchedEffect(viewModel.snackbarMessage.value) {
+        viewModel.snackbarMessage.value?.let { mensaje ->
+            scope.launch {
+                snackbarHostState.showSnackbar(mensaje)
+                viewModel.consumirSnackbar()
+            }
             onBack()
         }
-    )
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Box(modifier = Modifier.padding(padding)) {
+            if (viewModel.mostrarDialogo.value) {
+                AddReminderDialog(
+                    onDismiss = {
+                        viewModel.cerrarDialogo()
+                        onBack()
+                    },
+                    onSave = { nuevo ->
+                        viewModel.agregarYNotificar(nuevo, context)
+                    }
+                )
+            }
+        }
+    }
 }
 
-fun showTimePicker(context: Context, onTimeSelected: (String) -> Unit) {
-    val now = Calendar.getInstance()
-    TimePickerDialog(
-        context,
-        { _, hour, minute ->
-            val horaFormateada = String.format("%02d:%02d", hour, minute)
-            onTimeSelected(horaFormateada)
-        },
-        now.get(Calendar.HOUR_OF_DAY),
-        now.get(Calendar.MINUTE),
-        true
-    ).show()
-}
+
 
 
 

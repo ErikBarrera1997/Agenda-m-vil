@@ -14,21 +14,28 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.State
 import com.dev.Data.RecordatorioFormState
+import com.dev.agenda_movil.R
 
 class RecordatoriosViewModel(
     private val repository: RecordatoriosRepository
 ) : ViewModel() {
 
-    // Estado de lista
     val recordatorios: StateFlow<List<Recordatorio>> =
         repository.getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val _selectedRecordatorio = mutableStateOf<Recordatorio?>(null)
+    val selectedRecordatorio: State<Recordatorio?> = _selectedRecordatorio
+
+    fun selectRecordatorio(recordatorio: Recordatorio?) {
+        _selectedRecordatorio.value = recordatorio
+    }
+
     private val _mostrarDialogo = mutableStateOf(false)
     val mostrarDialogo: State<Boolean> = _mostrarDialogo
 
-    private val _snackbarMessage = mutableStateOf<String?>(null)
-    val snackbarMessage: State<String?> = _snackbarMessage
+    private val _snackbarMessage = mutableStateOf<Int?>(null)
+    val snackbarMessage: State<Int?> = _snackbarMessage
 
     fun agregar(recordatorio: Recordatorio) {
         viewModelScope.launch {
@@ -96,7 +103,7 @@ class RecordatoriosViewModel(
         _mostrarDialogo.value = false
     }
 
-    fun mostrarSnackbar(mensaje: String) {
+    fun mostrarSnackbar(mensaje: Int) {
         _snackbarMessage.value = mensaje
     }
 
@@ -108,15 +115,13 @@ class RecordatoriosViewModel(
         agregar(recordatorio)
         (context as? MainActivity)?.programarNotificacionesPorFechas(recordatorio)
         cerrarDialogo()
-        mostrarSnackbar("Recordatorio guardado")
+        mostrarSnackbar(R.string.recordatorio_guardado)
     }
 
     fun editarYNotificar(recordatorio: Recordatorio, context: Context) {
         editar(recordatorio)
         (context as? MainActivity)?.programarNotificacionesPorFechas(recordatorio)
         cerrarDialogo()
-        mostrarSnackbar("Recordatorio editado")
+        mostrarSnackbar(R.string.recordatorio_editado)
     }
 }
-
-

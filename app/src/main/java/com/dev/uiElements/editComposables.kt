@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ import com.dev.Data.RecordatorioFormState
 import com.dev.Data.RecordatorioFormStateSaver
 import com.dev.agenda_movil.AppViewModelProvider
 import com.dev.agenda_movil.MainActivity
+import com.dev.agenda_movil.R
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -137,20 +139,20 @@ fun EditarRecordatorioDialog(
                     formState = formState.copy(showErrors = true)
                 }
             }) {
-                Text("Guardar")
+                Text(stringResource(id = R.string.guardar))
             }
 
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(id = R.string.cancelar)) }
         },
-        title = { Text("Editar Recordatorio") },
+        title = { Text(stringResource(id = R.string.editar_recordatorio)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = formState.titulo,
                     onValueChange = { formState = formState.copy(titulo = it) },
-                    label = { Text("Título") },
+                    label = { Text(stringResource(id = R.string.titulo)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
@@ -159,13 +161,13 @@ fun EditarRecordatorioDialog(
                 )
 
                 if (formState.showErrors && formState.titulo.isBlank()) {
-                    Text("El título no puede estar vacío", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(id = R.string.error_titulo_vacio), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
                 OutlinedTextField(
                     value = formState.descripcion,
                     onValueChange = { formState = formState.copy(descripcion = it) },
-                    label = { Text("Descripción") },
+                    label = { Text(stringResource(id = R.string.descripcion)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
@@ -174,47 +176,47 @@ fun EditarRecordatorioDialog(
                 )
 
                 if (formState.showErrors && formState.descripcion.isBlank()) {
-                    Text("La descripción no puede estar vacía", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(id = R.string.error_descripcion_vacia), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
 
-                Text("Fecha de inicio", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(id = R.string.fecha_inicio), style = MaterialTheme.typography.labelSmall)
                 OutlinedButton(
                     onClick = { showDatePicker { formState = formState.copy(fechaInicio = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(formState.fechaInicio.ifEmpty { "Seleccionar fecha" })
+                    Text(formState.fechaInicio.ifEmpty { stringResource(id = R.string.seleccionar_fecha) })
                 }
 
-                Text("Hora de inicio", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(id = R.string.hora_inicio), style = MaterialTheme.typography.labelSmall)
                 OutlinedButton(
                     onClick = { showTimePicker { formState = formState.copy(horaInicio = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(formState.horaInicio.ifEmpty { "Seleccionar hora" })
+                    Text(formState.horaInicio.ifEmpty { stringResource(id = R.string.seleccionar_hora) })
                 }
 
-                Text("Fecha de fin", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(id = R.string.fecha_fin), style = MaterialTheme.typography.labelSmall)
                 OutlinedButton(
                     onClick = { showDatePicker { formState = formState.copy(fechaFin = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(formState.fechaFin.ifEmpty { "Seleccionar fecha" })
+                    Text(formState.fechaFin.ifEmpty { stringResource(id = R.string.seleccionar_fecha) })
                 }
                 if (formState.showErrors && formState.fechaFin.isBlank()) {
-                    Text("La fecha de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(id = R.string.error_fecha_fin), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
 
-                Text("Hora de fin", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(id = R.string.hora_fin), style = MaterialTheme.typography.labelSmall)
                 OutlinedButton(
                     onClick = { showTimePicker { formState = formState.copy(horaFin = it) } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(formState.horaFin.ifEmpty { "Seleccionar hora" })
+                    Text(formState.horaFin.ifEmpty { stringResource(id = R.string.seleccionar_hora) })
                 }
                 if (formState.showErrors && formState.horaFin.isBlank()) {
-                    Text("La hora de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(id = R.string.error_hora_fin), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
 
@@ -224,11 +226,11 @@ fun EditarRecordatorioDialog(
                         checked = formState.cumplido,
                         onCheckedChange = { formState = formState.copy(cumplido = it) }
                     )
-                    Text("Cumplido", modifier = Modifier.padding(start = 8.dp))
+                    Text(stringResource(id = R.string.cumplido), modifier = Modifier.padding(start = 8.dp))
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text("Audio", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(id = R.string.audio), style = MaterialTheme.typography.titleSmall)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -236,7 +238,7 @@ fun EditarRecordatorioDialog(
                         .background(Color.LightGray),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Agregar audio")
+                    Text(stringResource(id = R.string.agregar_audio))
                 }
             }
         }
@@ -278,7 +280,7 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
                             activity?.programarNotificacionesPorFechas(actualizado)
                             mostrarDialogo = false
                             scope.launch {
-                                snackbarHostState.showSnackbar("Recordatorio editado")
+                                snackbarHostState.showSnackbar(context.getString(R.string.recordatorio_editado))
                             }
                             onBack()
                         }
@@ -288,7 +290,3 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
         }
     }
 }
-
-
-
-

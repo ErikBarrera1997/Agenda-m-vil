@@ -17,28 +17,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.dev.Dao.Recordatorio
-import com.dev.Data.RecordatorioFormState
 import com.dev.agenda_movil.AppViewModelProvider
 import com.dev.agenda_movil.MainActivity
+import com.dev.agenda_movil.R
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 
 @Composable
 fun RecordatoriosScreen(
-    navController: NavController
+    navController: NavController,
+    windowSizeClass: WindowSizeClass
 ) {
-    val context = LocalContext.current
-    val activity = context as? MainActivity
     val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
-    var searchQuery by remember { mutableStateOf("") }
     val recordatorios by viewModel.recordatorios.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
 
     val recordatoriosFiltrados = remember(searchQuery, recordatorios) {
         if (searchQuery.isBlank()) {
@@ -50,57 +52,116 @@ fun RecordatoriosScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopBar(onAddClick = { navController.navigate(Screen.Agregar.route) })
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(Screen.Agregar.route) }) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar")
+    val isExpandedScreen = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
+
+    if (isExpandedScreen) {
+        RecordatoriosListAndDetailContent(
+            recordatorios = recordatoriosFiltrados,
+            viewModel = viewModel,
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it }
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopBar(onAddClick = { navController.navigate(Screen.Agregar.route) })
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = { navController.navigate(Screen.Agregar.route) }) {
+                    Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.agregar))
+                }
+            }
+        ) { padding ->
+            Column(modifier = Modifier.padding(padding)) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text(stringResource(id = R.string.buscar_recordatorio)) },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Search, contentDescription = stringResource(id = R.string.buscar))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    singleLine = true
+                )
+
+                ReminderList(
+                    reminders = recordatoriosFiltrados,
+                    onItemClick = { recordatorio ->
+                        navController.navigate(Screen.Editar.createRoute(recordatorio.id))
+                    }
+                )
             }
         }
-    ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+    }
+}
+
+@Composable
+fun RecordatoriosListAndDetailContent(
+    recordatorios: List<Recordatorio>,
+    viewModel: RecordatoriosViewModel,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    val selectedRecordatorio by viewModel.selectedRecordatorio
+
+    Row(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(8.dp)
+        ) {
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text("Buscar recordatorio") },
+                onValueChange = onSearchQueryChange,
+                label = { Text(stringResource(id = R.string.buscar_recordatorio)) },
                 leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = "Buscar")
+                    Icon(imageVector = Icons.Default.Search, contentDescription = stringResource(id = R.string.buscar))
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(bottom = 8.dp),
                 singleLine = true
             )
 
             ReminderList(
-                reminders = recordatoriosFiltrados,
-                onEdit = { actualizado ->
-                    navController.navigate(Screen.Editar.createRoute(actualizado.id))
-                },
-                onDelete = { eliminado ->
-                    viewModel.eliminar(eliminado)
-                },
-                activity = activity
+                reminders = recordatorios,
+                onItemClick = { recordatorio ->
+                    viewModel.selectRecordatorio(recordatorio)
+                }
             )
+        }
+
+        Box(modifier = Modifier.weight(1.5f)) {
+            selectedRecordatorio?.let {
+                EditReminderScreen(
+                    recordatorioId = it.id,
+                    onBack = { viewModel.selectRecordatorio(null) } // Oculta la vista de detalle
+                )
+            } ?: run {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text(stringResource(id = R.string.selecciona_recordatorio_detalle))
+                }
+            }
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopBar(onAddClick: () -> Unit) {
     TopAppBar(
-        title = { Text("Recordatorios") },
+        title = { Text(stringResource(id = R.string.recordatorios)) }, //aqui usamos los strings de los idiomas
         navigationIcon = {
             IconButton(onClick = { /* abrir calendario */ }) {
-                Icon(Icons.Default.DateRange, contentDescription = "Calendario")
+                Icon(Icons.Default.DateRange, contentDescription = stringResource(id = R.string.calendario))
             }
         },
         actions = {
             IconButton(onClick = onAddClick) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar")
+                Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.agregar))
             }
         }
     )
@@ -111,17 +172,15 @@ fun TopBar(onAddClick: () -> Unit) {
 @Composable
 fun ReminderList(
     reminders: List<Recordatorio>,
-    onEdit: (Recordatorio) -> Unit,
-    onDelete: (Recordatorio) -> Unit,
-    activity: MainActivity?
+    onItemClick: (Recordatorio) -> Unit
 ) {
+    val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
     LazyColumn {
         itemsIndexed(reminders) { _, reminder ->
             ReminderItem(
                 reminder = reminder,
-                onEdit = onEdit,
-                onDelete = onDelete,
-                activity = activity
+                onEdit = onItemClick,
+                onDelete = { viewModel.eliminar(it) }
             )
         }
     }
@@ -132,8 +191,7 @@ fun ReminderList(
 fun ReminderItem(
     reminder: Recordatorio,
     onEdit: (Recordatorio) -> Unit,
-    onDelete: (Recordatorio) -> Unit,
-    activity: MainActivity?
+    onDelete: (Recordatorio) -> Unit
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -142,7 +200,8 @@ fun ReminderItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
-            elevation = CardDefaults.cardElevation(4.dp)
+            elevation = CardDefaults.cardElevation(4.dp),
+            onClick = { onEdit(reminder) }
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(text = reminder.titulo, style = MaterialTheme.typography.titleMedium)
@@ -150,21 +209,21 @@ fun ReminderItem(
 
                 if (!reminder.fechaInicio.isNullOrBlank()) {
                     Text(
-                        text = "Inicio: ${reminder.fechaInicio}",
+                        text = stringResource(id = R.string.inicio, reminder.fechaInicio),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )
                 }
                 if (!reminder.fechaFin.isNullOrBlank()) {
                     Text(
-                        text = "Fin: ${reminder.fechaFin}",
+                        text = stringResource(id = R.string.fin, reminder.fechaFin),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )
                 }
                 if (reminder.cumplido) {
                     Text(
-                        text = "Cumplido",
+                        text = stringResource(id = R.string.cumplido),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFF388E3C)
                     )
@@ -175,10 +234,10 @@ fun ReminderItem(
                     horizontalArrangement = Arrangement.End
                 ) {
                     IconButton(onClick = { onEdit(reminder) }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar recordatorio")
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(id = R.string.editar_recordatorio))
                     }
                     IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Eliminar recordatorio")
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(id = R.string.eliminar_recordatorio_titulo))
                     }
                 }
             }
@@ -188,19 +247,19 @@ fun ReminderItem(
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
                 properties = DialogProperties(dismissOnClickOutside = false),
-                title = { Text("¿Eliminar recordatorio?") },
-                text = { Text("Esta acción no se puede deshacer.") },
+                title = { Text(stringResource(id = R.string.eliminar_recordatorio_titulo)) },
+                text = { Text(stringResource(id = R.string.eliminar_recordatorio_mensaje)) },
                 confirmButton = {
                     Button(onClick = {
                         onDelete(reminder)
                         showDeleteConfirm = false
                     }) {
-                        Text("Eliminar")
+                        Text(stringResource(id = R.string.eliminar))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirm = false }) {
-                        Text("Cancelar")
+                        Text(stringResource(id = R.string.cancelar))
                     }
                 }
             )
@@ -257,78 +316,78 @@ fun AddReminderDialog(
                     viewModel.limpiarFormulario()
                 }
             }) {
-                Text("Guardar")
+                Text(stringResource(id = R.string.guardar))
             }
         },
         dismissButton = {
             TextButton(onClick = {
                 viewModel.limpiarFormulario()
                 onDismiss()
-            }) { Text("Cancelar") }
+            }) { Text(stringResource(id = R.string.cancelar)) }
         },
-        title = { Text("Nuevo Recordatorio") },
+        title = { Text(stringResource(id = R.string.nuevo_recordatorio)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = formState.titulo,
                     onValueChange = { viewModel.actualizarCampo { copy(titulo = it) } },
-                    label = { Text("Título") },
+                    label = { Text(stringResource(id = R.string.titulo)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                 )
                 if (formState.showErrors && formState.titulo.isBlank()) {
-                    Text("El título no puede estar vacío", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(id = R.string.error_titulo_vacio), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
                 OutlinedTextField(
                     value = formState.descripcion,
                     onValueChange = { viewModel.actualizarCampo { copy(descripcion = it) } },
-                    label = { Text("Descripción") },
+                    label = { Text(stringResource(id = R.string.descripcion)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                 )
                 if (formState.showErrors && formState.descripcion.isBlank()) {
-                    Text("La descripción no puede estar vacía", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(id = R.string.error_descripcion_vacia), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
-                Text("Fecha de inicio")
+                Text(stringResource(id = R.string.fecha_inicio))
                 OutlinedButton(
                     onClick = { showDatePicker { viewModel.actualizarCampo { copy(fechaInicio = it) } } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(formState.fechaInicio.ifEmpty { "Seleccionar fecha" })
+                    Text(formState.fechaInicio.ifEmpty { stringResource(id = R.string.seleccionar_fecha) })
                 }
 
-                Text("Hora de inicio")
+                Text(stringResource(id = R.string.hora_inicio))
                 OutlinedButton(
                     onClick = { showTimePicker { viewModel.actualizarCampo { copy(horaInicio = it) } } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(formState.horaInicio.ifEmpty { "Seleccionar hora" })
+                    Text(formState.horaInicio.ifEmpty { stringResource(id = R.string.seleccionar_hora) })
                 }
 
-                Text("Fecha de fin")
+                Text(stringResource(id = R.string.fecha_fin))
                 OutlinedButton(
                     onClick = { showDatePicker { viewModel.actualizarCampo { copy(fechaFin = it) } } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(formState.fechaFin.ifEmpty { "Seleccionar fecha" })
+                    Text(formState.fechaFin.ifEmpty { stringResource(id = R.string.seleccionar_fecha) })
                 }
                 if (formState.showErrors && formState.fechaFin.isBlank()) {
-                    Text("La fecha de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(id = R.string.error_fecha_fin), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
-                Text("Hora de fin")
+                Text(stringResource(id = R.string.hora_fin))
                 OutlinedButton(
                     onClick = { showTimePicker { viewModel.actualizarCampo { copy(horaFin = it) } } },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(formState.horaFin.ifEmpty { "Seleccionar hora" })
+                    Text(formState.horaFin.ifEmpty { stringResource(id = R.string.seleccionar_hora) })
                 }
                 if (formState.showErrors && formState.horaFin.isBlank()) {
-                    Text("La hora de fin es obligatoria", color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(id = R.string.error_hora_fin), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -337,7 +396,7 @@ fun AddReminderDialog(
                         checked = formState.cumplido,
                         onCheckedChange = { viewModel.actualizarCampo { copy(cumplido = it) } }
                     )
-                    Text("Cumplido", modifier = Modifier.padding(start = 8.dp))
+                    Text(stringResource(id = R.string.cumplido), modifier = Modifier.padding(start = 8.dp))
                 }
             }
         }
@@ -357,9 +416,9 @@ fun AddReminderScreen(onBack: () -> Unit) {
     }
 
     LaunchedEffect(viewModel.snackbarMessage.value) {
-        viewModel.snackbarMessage.value?.let { mensaje ->
+        viewModel.snackbarMessage.value?.let { mensajeId ->
             scope.launch {
-                snackbarHostState.showSnackbar(mensaje)
+                snackbarHostState.showSnackbar(context.getString(mensajeId))
                 viewModel.consumirSnackbar()
             }
             onBack()
@@ -384,10 +443,3 @@ fun AddReminderScreen(onBack: () -> Unit) {
         }
     }
 }
-
-
-
-
-
-
-

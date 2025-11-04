@@ -1,4 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">移动议程</string>
+
+    <string name="guardar">保存</string>
+    <string name="cancelar">取消</string>
+    <string name="editar_recordatorio">编辑提醒</string>
+    <string name="titulo">标题</string>
+    <string name="error_titulo_vacio">标题不能为空</string>
+    <string name="descripcion">描述</string>
+    <string name="error_descripcion_vacia">描述不能为空</string>
+    <string name="fecha_inicio">开始日期</string>
+    <string name="seleccionar_fecha">选择日期</string>
+    <string name="hora_inicio">开始时间</string>
+    <string name="seleccionar_hora">选择时间</string>
+    <string name="fecha_fin">结束日期</string>
+    <string name="error_fecha_fin">结束日期为必填项</string>
+    <string name="hora_fin">结束时间</string>
+    <string name="error_hora_fin">结束时间为必填项</string>
+    <string name="cumplido">已完成</string>
+    <string name="audio">音频</string>
+    <string name="agregar_audio">添加音频</string>
+    <string name="recordatorio_editado">提醒已编辑</string>
+
+    <!-- mainComposables -->
+    <string name="recordatorios">提醒</string>
+    <string name="calendario">日历</string>
+    <string name="agregar">添加</string>
+    <string name="buscar_recordatorio">搜索提醒</string>
+    <string name="buscar">搜索</string>
+    <string name="inicio">开始: %1$s</string>
+    <string name="fin">结束: %1$s</string>
+    <string name="eliminar_recordatorio_titulo">删除提醒？</string>
+    <string name="eliminar_recordatorio_mensaje">此操作无法撤消。</string>
+    <string name="eliminar">删除</string>
+    <string name="nuevo_recordatorio">新提醒</string>
+    <string name="recordatorio_guardado">提醒已保存</string>
+    <string name="selecciona_recordatorio_detalle">选择一个提醒以查看详细信息</string>
 </resources>

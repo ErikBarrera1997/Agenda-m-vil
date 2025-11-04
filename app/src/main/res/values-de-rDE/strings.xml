@@ -1,4 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Mobile Agenda</string>
+
+    <string name="guardar">Speichern</string>
+    <string name="cancelar">Abbrechen</string>
+    <string name="editar_recordatorio">Erinnerung bearbeiten</string>
+    <string name="titulo">Titel</string>
+    <string name="error_titulo_vacio">Der Titel darf nicht leer sein</string>
+    <string name="descripcion">Beschreibung</string>
+    <string name="error_descripcion_vacia">Die Beschreibung darf nicht leer sein</string>
+    <string name="fecha_inicio">Startdatum</string>
+    <string name="seleccionar_fecha">Datum auswählen</string>
+    <string name="hora_inicio">Startzeit</string>
+    <string name="seleccionar_hora">Zeit auswählen</string>
+    <string name="fecha_fin">Enddatum</string>
+    <string name="error_fecha_fin">Enddatum ist erforderlich</string>
+    <string name="hora_fin">Endzeit</string>
+    <string name="error_hora_fin">Endzeit ist erforderlich</string>
+    <string name="cumplido">Abgeschlossen</string>
+    <string name="audio">Audio</string>
+    <string name="agregar_audio">Audio hinzufügen</string>
+    <string name="recordatorio_editado">Erinnerung bearbeitet</string>
+
+    <!-- mainComposables -->
+    <string name="recordatorios">Erinnerungen</string>
+    <string name="calendario">Kalender</string>
+    <string name="agregar">Hinzufügen</string>
+    <string name="buscar_recordatorio">Erinnerung suchen</string>
+    <string name="buscar">Suchen</string>
+    <string name="inicio">Start: %1$s</string>
+    <string name="fin">Ende: %1$s</string>
+    <string name="eliminar_recordatorio_titulo">Erinnerung löschen?</string>
+    <string name="eliminar_recordatorio_mensaje">Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="eliminar">Löschen</string>
+    <string name="nuevo_recordatorio">Neue Erinnerung</string>
+    <string name="recordatorio_guardado">Erinnerung gespeichert</string>
+    <string name="selecciona_recordatorio_detalle">Wähle eine Erinnerung aus, um die Details zu sehen</string>
 </resources>

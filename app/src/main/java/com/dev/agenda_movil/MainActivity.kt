@@ -12,6 +12,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -37,6 +39,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -50,6 +53,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Agenda_movilTheme {
                 val navController = rememberNavController()
+                val windowSizeClass = calculateWindowSizeClass(this)
 
                 NavHost(
                     navController = navController,
@@ -57,7 +61,10 @@ class MainActivity : ComponentActivity() {
                 ) {
 
                     composable(Screen.Lista.route) {
-                        RecordatoriosScreen(navController = navController)
+                        RecordatoriosScreen(
+                            navController = navController,
+                            windowSizeClass = windowSizeClass
+                        )
                     }
 
                     composable(Screen.Agregar.route) {
@@ -88,23 +95,23 @@ class MainActivity : ComponentActivity() {
 
 
 
-    fun programarNotificacion(context: Context, recordatorio: Recordatorio, triggerTimeMillis: Long) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    fun programarNotificacion(recordatorio: Recordatorio, triggerTimeMillis: Long) {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!alarmManager.canScheduleExactAlarms()) {
-                Toast.makeText(context, "No se puede programar alarmas exactas. Revisa permisos o configuración de batería.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "No se puede programar alarmas exactas. Revisa permisos o configuración de batería.", Toast.LENGTH_LONG).show()
                 return
             }
         }
 
-        val intent = Intent(context, NotificacionReceiver::class.java).apply {
+        val intent = Intent(this, NotificacionReceiver::class.java).apply {
             putExtra("titulo", recordatorio.titulo)
             putExtra("descripcion", recordatorio.descripcion)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
-            context,
+            this,
             recordatorio.titulo.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -117,7 +124,7 @@ class MainActivity : ComponentActivity() {
                 pendingIntent
             )
         } catch (e: SecurityException) {
-            Toast.makeText(context, "Error al programar la notificación: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Error al programar la notificación: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -125,14 +132,14 @@ class MainActivity : ComponentActivity() {
         recordatorio.fechaInicio?.let { fecha ->
             recordatorio.horaInicio?.let { hora ->
                 val trigger = convertirFechaHoraATimestamp(fecha, hora)
-                programarNotificacion(this, recordatorio, trigger)
+                programarNotificacion(recordatorio, trigger)
             }
         }
 
         recordatorio.fechaFin?.let { fecha ->
             recordatorio.horaFin?.let { hora ->
                 val trigger = convertirFechaHoraATimestamp(fecha, hora)
-                programarNotificacion(this, recordatorio, trigger)
+                programarNotificacion(recordatorio, trigger)
             }
         }
     }
@@ -141,18 +148,10 @@ class MainActivity : ComponentActivity() {
         val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
         return try {
             formato.parse("$fecha $hora")?.time ?: System.currentTimeMillis()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             System.currentTimeMillis()
         }
     }
 
 
 }
-
-
-
-
-
-
-
-

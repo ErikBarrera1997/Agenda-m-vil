@@ -1,3 +1,39 @@
 <resources>
     <string name="app_name">Agenda_movil</string>
+
+    <!-- Editar Recordatorio -->
+    <string name="guardar">Guardar</string>
+    <string name="cancelar">Cancelar</string>
+    <string name="editar_recordatorio">Editar Recordatorio</string>
+    <string name="titulo">Título</string>
+    <string name="error_titulo_vacio">El título no puede estar vacío</string>
+    <string name="descripcion">Descripción</string>
+    <string name="error_descripcion_vacia">La descripción no puede estar vacía</string>
+    <string name="fecha_inicio">Fecha de inicio</string>
+    <string name="seleccionar_fecha">Seleccionar fecha</string>
+    <string name="hora_inicio">Hora de inicio</string>
+    <string name="seleccionar_hora">Seleccionar hora</string>
+    <string name="fecha_fin">Fecha de fin</string>
+    <string name="error_fecha_fin">La fecha de fin es obligatoria</string>
+    <string name="hora_fin">Hora de fin</string>
+    <string name="error_hora_fin">La hora de fin es obligatoria</string>
+    <string name="cumplido">Cumplido</string>
+    <string name="audio">Audio</string>
+    <string name="agregar_audio">Agregar audio</string>
+    <string name="recordatorio_editado">Recordatorio editado</string>
+
+    <!-- mainComposables -->
+    <string name="recordatorios">Recordatorios</string>
+    <string name="calendario">Calendario</string>
+    <string name="agregar">Agregar</string>
+    <string name="buscar_recordatorio">Buscar recordatorio</string>
+    <string name="buscar">Buscar</string>
+    <string name="inicio">Inicio: %1$s</string>
+    <string name="fin">Fin: %1$s</string>
+    <string name="eliminar_recordatorio_titulo">¿Eliminar recordatorio?</string>
+    <string name="eliminar_recordatorio_mensaje">Esta acción no se puede deshacer.</string>
+    <string name="eliminar">Eliminar</string>
+    <string name="nuevo_recordatorio">Nuevo Recordatorio</string>
+    <string name="recordatorio_guardado">Recordatorio guardado</string>
+    <string name="selecciona_recordatorio_detalle">Selecciona un recordatorio para ver los detalles</string>
 </resources>

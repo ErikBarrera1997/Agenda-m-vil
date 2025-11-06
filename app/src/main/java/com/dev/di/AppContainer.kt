@@ -8,7 +8,7 @@ import com.dev.Dao.RecordatoriosRepository
 class AppContainer(context : Context) {
 
     val recordatoriosRepository: RecordatoriosRepository by lazy {
-        OfflineRecordatoriosRepository(AppDatabase.getDatabase(context).recordatorioDao())
+        OfflineRecordatoriosRepository(AppDatabase.getInstance(context).recordatorioDao())
     }
 
 }

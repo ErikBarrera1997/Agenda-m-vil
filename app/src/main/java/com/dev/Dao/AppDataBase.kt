@@ -12,17 +12,18 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun recordatorioDao(): RecordatorioDao
     companion object {
-        @Volatile
-        private var Instance: AppDatabase? = null
+        @Volatile private var INSTANCE: AppDatabase? = null
 
-        fun getDatabase(context: Context): AppDatabase {
-            // if the Instance is not null, return it, otherwise create a new database instance.
-            return Instance ?: synchronized(this) {
-                Room.databaseBuilder(context, AppDatabase::class.java, "recordatorios_db")
-                    .build()
-                    .also { Instance = it }
+        fun getInstance(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "recordatorios.db"
+                ).build().also { INSTANCE = it }
             }
         }
     }
+
 }
 

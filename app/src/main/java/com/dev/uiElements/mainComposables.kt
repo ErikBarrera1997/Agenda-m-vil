@@ -35,7 +35,7 @@ import coil.compose.AsyncImage
 import com.dev.Dao.Recordatorio
 import com.dev.agenda_movil.AppViewModelProvider
 import com.dev.agenda_movil.R
-import com.dev.utils.crearUriTemporal
+import com.dev.utils.crearUriPersistente
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -426,7 +426,7 @@ fun AddReminderDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = {
-                        val nuevaUri = crearUriTemporal(context)
+                        val nuevaUri = crearUriPersistente(context)
                         uriTemporal = nuevaUri
                         launcherCamara.launch(nuevaUri)
                     }) {

@@ -2,7 +2,6 @@ package com.dev.uiElements
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,11 +26,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.dev.Data.RecordatorioFormState
 import com.dev.agenda_movil.R
+import com.dev.utils.crearUriPersistente
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -278,15 +277,10 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
     }
 }
 
-fun crearUriPersistente(context: Context): Uri {
-    val file = File(context.filesDir, "recordatorio_${System.currentTimeMillis()}.jpg")
-    if (!file.exists()) {
-        file.createNewFile()
-    }
-    return FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-}
+
 
 fun archivoExiste(uri: String?): Boolean {
     val file = uri?.let { Uri.parse(it).path?.let { path -> File(path) } }
     return file?.exists() == true
 }
+

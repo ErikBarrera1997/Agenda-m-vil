@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.State
+import com.dev.Camera.ImagenHelper
 import com.dev.Data.RecordatorioFormState
 import com.dev.agenda_movil.R
 
@@ -86,6 +87,7 @@ class RecordatoriosViewModel(
 
     fun eliminar(recordatorio: Recordatorio) {
         viewModelScope.launch {
+            ImagenHelper.eliminarImagen(recordatorio.imagenUri)
             repository.delete(recordatorio)
         }
     }

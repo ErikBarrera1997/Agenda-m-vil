@@ -2,19 +2,27 @@ package com.dev.uiElements
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -23,15 +31,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.dev.Dao.Recordatorio
 import com.dev.agenda_movil.AppViewModelProvider
-import com.dev.agenda_movil.MainActivity
 import com.dev.agenda_movil.R
+import com.dev.utils.crearUriTemporal
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.material3.windowsizeclass.WindowSizeClass
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+
 
 @Composable
 fun RecordatoriosScreen(
@@ -279,6 +287,15 @@ fun AddReminderDialog(
     val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
     val formState = viewModel.formState.value
 
+    var uriTemporal by remember { mutableStateOf<Uri?>(null) }
+
+    val launcherCamara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val uri = uriTemporal
+        if (success && uri != null) {
+            viewModel.actualizarCampo { copy(imagenUri = uri.toString()) }
+        }
+    }
+
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
             context,
@@ -397,6 +414,38 @@ fun AddReminderDialog(
                         onCheckedChange = { viewModel.actualizarCampo { copy(cumplido = it) } }
                     )
                     Text(stringResource(id = R.string.cumplido), modifier = Modifier.padding(start = 8.dp))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(stringResource(id = R.string.imagen), style = MaterialTheme.typography.titleSmall)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = {
+                        val nuevaUri = crearUriTemporal(context)
+                        uriTemporal = nuevaUri
+                        launcherCamara.launch(nuevaUri)
+                    }) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = "Abrir cámara")
+                    }
+                    Text(text = stringResource(id = R.string.tomar_foto), modifier = Modifier.padding(start = 8.dp))
+                }
+
+                formState.imagenUri?.let { uri ->
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = "Imagen adjunta",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.LightGray),
+                        contentScale = ContentScale.Crop
+                    )
                 }
             }
         }

@@ -12,5 +12,6 @@ data class Recordatorio(
     val fechaFin: String? = null,
     val horaInicio: String?,
     val horaFin: String?,
-    val cumplido: Boolean = false
+    val cumplido: Boolean = false,
+    val imagenUri: String? = null
 )

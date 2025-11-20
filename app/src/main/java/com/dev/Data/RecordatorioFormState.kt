@@ -13,6 +13,7 @@ data class RecordatorioFormState(
     val fechaFin: String = "",
     val horaFin: String = "",
     val cumplido: Boolean = false,
+    val imagenUri: String? = null,
     val showErrors: Boolean = false
 )
 
@@ -27,6 +28,7 @@ fun RecordatorioFormStateSaver() = Saver<RecordatorioFormState, Bundle>(
             putString("fechaFin", state.fechaFin)
             putString("horaFin", state.horaFin)
             putBoolean("cumplido", state.cumplido)
+            putString("imagenUri", state.imagenUri)
             putBoolean("showErrors", state.showErrors)
         }
     },
@@ -39,7 +41,9 @@ fun RecordatorioFormStateSaver() = Saver<RecordatorioFormState, Bundle>(
             fechaFin = bundle.getString("fechaFin") ?: "",
             horaFin = bundle.getString("horaFin") ?: "",
             cumplido = bundle.getBoolean("cumplido"),
+            imagenUri = bundle.getString("imagenUri"),
             showErrors = bundle.getBoolean("showErrors")
         )
     }
 )
+

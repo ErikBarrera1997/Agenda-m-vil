@@ -2,25 +2,38 @@ package com.dev.uiElements
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.dev.Data.RecordatorioFormState
 import com.dev.agenda_movil.R
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -29,7 +42,9 @@ fun EditarRecordatorioDialog(
     formState: RecordatorioFormState,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
-    onUpdate: (RecordatorioFormState.() -> RecordatorioFormState) -> Unit
+    onUpdate: (RecordatorioFormState.() -> RecordatorioFormState) -> Unit,
+    onCambiarImagen: (Uri) -> Unit,
+    onEliminarImagen: () -> Unit
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
@@ -150,16 +165,43 @@ fun EditarRecordatorioDialog(
                     Text(stringResource(id = R.string.cumplido), modifier = Modifier.padding(start = 8.dp))
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text(stringResource(id = R.string.audio), style = MaterialTheme.typography.titleSmall)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(stringResource(id = R.string.agregar_audio))
+                Spacer(modifier = Modifier.height(8.dp))
+                formState.imagenUri?.let { uri ->
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = "Imagen adjunta",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.LightGray),
+                        contentScale = ContentScale.Crop
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        TextButton(onClick = onEliminarImagen) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar imagen")
+                            Spacer(Modifier.width(4.dp))
+                            Text("Eliminar")
+                        }
+                        TextButton(onClick = {
+                            val nueva = crearUriPersistente(context)
+                            onCambiarImagen(nueva)
+                        }) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = "Cambiar imagen")
+                            Spacer(Modifier.width(4.dp))
+                            Text("Cambiar")
+                        }
+                    }
+                } ?: TextButton(onClick = {
+                    val nueva = crearUriPersistente(context)
+                    onCambiarImagen(nueva)
+                }) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = "Agregar imagen")
+                    Spacer(Modifier.width(4.dp))
+                    Text("Agregar imagen")
                 }
             }
         }
@@ -182,6 +224,16 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    var nuevaUri by remember { mutableStateOf<Uri?>(null) }
+
+    val launcherCamara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            nuevaUri?.let { uri ->
+                viewModel.actualizarCampo { copy(imagenUri = uri.toString()) }
+            }
+        }
+    }
 
     LaunchedEffect(recordatorio) {
         recordatorio?.let { viewModel.inicializarFormulario(it) }
@@ -211,9 +263,23 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
                             onBack()
                         }
                     },
-                    onUpdate = { viewModel.actualizarCampo(it) }
+                    onUpdate = { viewModel.actualizarCampo(it) },
+                    onCambiarImagen = { uri ->
+                        nuevaUri = uri
+                        launcherCamara.launch(uri)
+                    },
+                    onEliminarImagen = {
+                        viewModel.actualizarCampo { copy(imagenUri = null) }
+                    }
                 )
             }
         }
     }
+}
+
+fun crearUriPersistente(context: Context): Uri {
+    val file = File(context.filesDir, "recordatorio_${System.currentTimeMillis()}.jpg").apply {
+        createNewFile()
+    }
+    return FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
 }

@@ -166,7 +166,7 @@ fun EditarRecordatorioDialog(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-                formState.imagenUri?.let { uri ->
+                formState.imagenUri?.takeIf { it.isNotBlank() && archivoExiste(it) }?.let { uri ->
                     AsyncImage(
                         model = uri,
                         contentDescription = "Imagen adjunta",
@@ -177,6 +177,7 @@ fun EditarRecordatorioDialog(
                             .background(Color.LightGray),
                         contentScale = ContentScale.Crop
                     )
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -278,8 +279,14 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
 }
 
 fun crearUriPersistente(context: Context): Uri {
-    val file = File(context.filesDir, "recordatorio_${System.currentTimeMillis()}.jpg").apply {
-        createNewFile()
+    val file = File(context.filesDir, "recordatorio_${System.currentTimeMillis()}.jpg")
+    if (!file.exists()) {
+        file.createNewFile()
     }
     return FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+}
+
+fun archivoExiste(uri: String?): Boolean {
+    val file = uri?.let { Uri.parse(it).path?.let { path -> File(path) } }
+    return file?.exists() == true
 }

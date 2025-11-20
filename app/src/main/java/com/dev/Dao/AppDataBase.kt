@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Recordatorio::class], version = 2, exportSchema = false)
+@Database(entities = [Recordatorio::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun recordatorioDao(): RecordatorioDao
@@ -21,6 +21,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "recordatorios.db"
                 ).build().also { INSTANCE = it }
+
             }
         }
     }

@@ -1,4 +1,4 @@
-package com.dev.Camera
+package com.dev.Camara
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult

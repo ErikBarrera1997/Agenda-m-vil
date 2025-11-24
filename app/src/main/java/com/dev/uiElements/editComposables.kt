@@ -6,7 +6,9 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -49,6 +51,7 @@ fun EditarRecordatorioDialog(
     val calendar = remember { Calendar.getInstance() }
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val focusManager = LocalFocusManager.current
+    var showImagePreview by remember { mutableStateOf(false) }
 
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
@@ -102,7 +105,11 @@ fun EditarRecordatorioDialog(
                     keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                 )
                 if (formState.showErrors && formState.titulo.isBlank()) {
-                    Text(stringResource(id = R.string.error_titulo_vacio), color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        stringResource(id = R.string.error_titulo_vacio),
+                        color = Color.Red,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
 
                 OutlinedTextField(
@@ -114,7 +121,11 @@ fun EditarRecordatorioDialog(
                     keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                 )
                 if (formState.showErrors && formState.descripcion.isBlank()) {
-                    Text(stringResource(id = R.string.error_descripcion_vacia), color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        stringResource(id = R.string.error_descripcion_vacia),
+                        color = Color.Red,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
 
                 Text(stringResource(id = R.string.fecha_inicio), style = MaterialTheme.typography.labelSmall)
@@ -141,7 +152,11 @@ fun EditarRecordatorioDialog(
                     Text(formState.fechaFin.ifEmpty { stringResource(id = R.string.seleccionar_fecha) })
                 }
                 if (formState.showErrors && formState.fechaFin.isBlank()) {
-                    Text(stringResource(id = R.string.error_fecha_fin), color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        stringResource(id = R.string.error_fecha_fin),
+                        color = Color.Red,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
 
                 Text(stringResource(id = R.string.hora_fin), style = MaterialTheme.typography.labelSmall)
@@ -152,7 +167,11 @@ fun EditarRecordatorioDialog(
                     Text(formState.horaFin.ifEmpty { stringResource(id = R.string.seleccionar_hora) })
                 }
                 if (formState.showErrors && formState.horaFin.isBlank()) {
-                    Text(stringResource(id = R.string.error_hora_fin), color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        stringResource(id = R.string.error_hora_fin),
+                        color = Color.Red,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -163,29 +182,41 @@ fun EditarRecordatorioDialog(
                     )
                     Text(stringResource(id = R.string.cumplido), modifier = Modifier.padding(start = 8.dp))
                 }
-
+                //Text("URI: ${formState.imagenUri}")
                 Spacer(modifier = Modifier.height(8.dp))
-                formState.imagenUri?.takeIf { it.isNotBlank() && archivoExiste(it) }?.let { uri ->
-                    AsyncImage(
-                        model = uri,
-                        contentDescription = "Imagen adjunta",
+
+                //Bloque de imagen con vista previa, expandir y borrar
+                formState.imagenUri?.takeIf { it.isNotBlank() }?.let { uriString ->
+                    val uri = Uri.parse(uriString)
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.LightGray),
-                        contentScale = ContentScale.Crop
-                    )
+                            .background(Color.LightGray)
+                            .clickable { showImagePreview = true }
+                    ) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = "Imagen adjunta",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        IconButton(
+                            onClick = onEliminarImagen,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar imagen", tint = Color.White)
+                        }
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        TextButton(onClick = onEliminarImagen) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar imagen")
-                            Spacer(Modifier.width(4.dp))
-                            Text("Eliminar")
-                        }
                         TextButton(onClick = {
                             val nueva = crearUriPersistente(context)
                             onCambiarImagen(nueva)
@@ -206,6 +237,28 @@ fun EditarRecordatorioDialog(
             }
         }
     )
+
+    // Diálogo para expandir imagen
+    if (showImagePreview) {
+        AlertDialog(
+            onDismissRequest = { showImagePreview = false },
+            text = {
+                AsyncImage(
+                    model = Uri.parse(formState.imagenUri ?: ""), //convertir a Uri
+                    contentDescription = "Imagen completa",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showImagePreview = false }) {
+                    Text("Cerrar")
+                }
+            }
+        )
+    }
 }
 
 
@@ -267,10 +320,12 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
                     onCambiarImagen = { uri ->
                         nuevaUri = uri
                         launcherCamara.launch(uri)
+                        viewModel.cambiarImagen(context, uri)
                     },
                     onEliminarImagen = {
-                        viewModel.actualizarCampo { copy(imagenUri = null) }
+                        viewModel.eliminarImagen(context) //pasa el context
                     }
+
                 )
             }
         }
@@ -278,9 +333,4 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
 }
 
 
-
-fun archivoExiste(uri: String?): Boolean {
-    val file = uri?.let { Uri.parse(it).path?.let { path -> File(path) } }
-    return file?.exists() == true
-}
 

@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.State
-import com.dev.Camera.ImagenHelper
+import com.dev.Camara.ImagenHelper
 import com.dev.Data.RecordatorioFormState
 import com.dev.agenda_movil.R
 
@@ -66,7 +66,8 @@ class RecordatoriosViewModel(
                 horaInicio = state.horaInicio.ifBlank { null },
                 fechaFin = state.fechaFin.ifBlank { null },
                 horaFin = state.horaFin.ifBlank { null },
-                cumplido = state.cumplido
+                cumplido = state.cumplido,
+                imagenUri = state.imagenUri // ✅ recuperamos el campo
             )
         } else {
             _formState.value = state.copy(showErrors = true)
@@ -85,9 +86,9 @@ class RecordatoriosViewModel(
         }
     }
 
-    fun eliminar(recordatorio: Recordatorio) {
+    fun eliminar(context: Context, recordatorio: Recordatorio) {
         viewModelScope.launch {
-            ImagenHelper.eliminarImagen(recordatorio.imagenUri)
+            ImagenHelper.eliminarImagen(context, recordatorio.imagenUri)
             repository.delete(recordatorio)
         }
     }

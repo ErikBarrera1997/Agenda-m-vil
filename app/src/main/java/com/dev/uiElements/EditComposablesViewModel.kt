@@ -1,6 +1,7 @@
 package com.dev.uiElements
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.State
+import com.dev.Camara.ImagenHelper
 
 class EditComposablesViewModel(
     private val repository: RecordatoriosRepository,
@@ -32,6 +34,7 @@ class EditComposablesViewModel(
     private val _snackbarMessage = mutableStateOf<String?>(null)
     val snackbarMessage: State<String?> = _snackbarMessage
 
+    // ✅ Inicializar formulario con datos del recordatorio
     fun inicializarFormulario(recordatorio: Recordatorio) {
         _formState.value = RecordatorioFormState(
             titulo = recordatorio.titulo,
@@ -40,15 +43,18 @@ class EditComposablesViewModel(
             horaInicio = recordatorio.horaInicio ?: "",
             fechaFin = recordatorio.fechaFin ?: "",
             horaFin = recordatorio.horaFin ?: "",
-            cumplido = recordatorio.cumplido
+            cumplido = recordatorio.cumplido,
+            imagenUri = recordatorio.imagenUri
         )
         _mostrarDialogo.value = true
     }
 
+    // ✅ Actualizar campos del formulario
     fun actualizarCampo(update: RecordatorioFormState.() -> RecordatorioFormState) {
         _formState.value = _formState.value.update()
     }
 
+    // ✅ Validar y construir objeto Recordatorio
     fun validarYConstruir(): Recordatorio? {
         val state = _formState.value
         val camposValidos = state.titulo.isNotBlank() &&
@@ -64,7 +70,8 @@ class EditComposablesViewModel(
                 horaInicio = state.horaInicio.ifBlank { null },
                 fechaFin = state.fechaFin.ifBlank { null },
                 horaFin = state.horaFin.ifBlank { null },
-                cumplido = state.cumplido
+                cumplido = state.cumplido,
+                imagenUri = state.imagenUri
             )
         } else {
             _formState.value = state.copy(showErrors = true)
@@ -82,6 +89,20 @@ class EditComposablesViewModel(
                 onSave(actualizado)
             }
         }
+    }
+
+    fun eliminarImagen(context: Context) {
+        formState.value.imagenUri?.let { uri ->
+            ImagenHelper.eliminarImagen(context, uri) // borra archivo físico y notifica
+            _formState.value = _formState.value.copy(imagenUri = null)
+        }
+    }
+
+    fun cambiarImagen(context: Context, nuevaUri: Uri) {
+        formState.value.imagenUri?.let { uri ->
+            ImagenHelper.eliminarImagen(context, uri) // borra la vieja
+        }
+        _formState.value = _formState.value.copy(imagenUri = nuevaUri.toString())
     }
 
     fun cerrarDialogo() {

@@ -182,17 +182,22 @@ fun ReminderList(
     reminders: List<Recordatorio>,
     onItemClick: (Recordatorio) -> Unit
 ) {
+    val context = LocalContext.current
     val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
+
     LazyColumn {
         itemsIndexed(reminders) { _, reminder ->
             ReminderItem(
                 reminder = reminder,
                 onEdit = onItemClick,
-                onDelete = { viewModel.eliminar(it) }
+                onDelete = { recordatorio ->
+                    viewModel.eliminar(context, recordatorio)
+                }
             )
         }
     }
 }
+
 
 
 @Composable
@@ -406,7 +411,7 @@ fun AddReminderDialog(
                 if (formState.showErrors && formState.horaFin.isBlank()) {
                     Text(stringResource(id = R.string.error_hora_fin), color = Color.Red, style = MaterialTheme.typography.labelSmall)
                 }
-
+ //               Text("URI: ${formState.imagenUri}")
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
@@ -435,9 +440,10 @@ fun AddReminderDialog(
                     Text(text = stringResource(id = R.string.tomar_foto), modifier = Modifier.padding(start = 8.dp))
                 }
 
-                formState.imagenUri?.let { uri ->
+                formState.imagenUri?.let { uriString ->
+                    //val uri = Uri.parse(uriString)
                     AsyncImage(
-                        model = uri,
+                        model = Uri.parse(formState.imagenUri ?: ""),
                         contentDescription = "Imagen adjunta",
                         modifier = Modifier
                             .fillMaxWidth()
@@ -447,6 +453,8 @@ fun AddReminderDialog(
                         contentScale = ContentScale.Crop
                     )
                 }
+
+
             }
         }
     )

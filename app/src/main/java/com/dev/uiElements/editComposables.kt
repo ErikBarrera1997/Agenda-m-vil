@@ -85,6 +85,7 @@ fun EditarRecordatorioDialog(
         ).show()
     }
 
+    val scrollState = rememberScrollState()
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnClickOutside = false),
@@ -100,7 +101,11 @@ fun EditarRecordatorioDialog(
         },
         title = { Text(stringResource(id = R.string.editar_recordatorio)) },
         text = {
-            Column {
+            Column (
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState) //habilita scroll
+            ){
                 OutlinedTextField(
                     value = formState.titulo,
                     onValueChange = { onUpdate { copy(titulo = it) } },
@@ -333,35 +338,6 @@ fun EditarRecordatorioDialog(
         )
     }
 
-
-
-
-
-
-
-
-
-    // Diálogo para expandir imagen
-    if (showImagePreview) {
-        AlertDialog(
-            onDismissRequest = { showImagePreview = false },
-            text = {
-                AsyncImage(
-                    model = Uri.parse(formState.imagenUri ?: ""), //convertir a Uri
-                    contentDescription = "Imagen completa",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp)
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showImagePreview = false }) {
-                    Text("Cerrar")
-                }
-            }
-        )
-    }
 }
 
 

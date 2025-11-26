@@ -1,21 +1,22 @@
 package com.dev.uiElements
 
-import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -29,10 +30,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -46,9 +47,6 @@ import com.dev.utils.crearUriVideoPersistente
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.material.icons.filled.Videocam
-
-
 
 
 @Composable
@@ -352,6 +350,7 @@ fun AddReminderDialog(
         ).show()
     }
 
+    val scrollState = rememberScrollState()
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnClickOutside = false),
@@ -373,7 +372,11 @@ fun AddReminderDialog(
         },
         title = { Text(stringResource(id = R.string.nuevo_recordatorio)) },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState) //habilita scroll
+            ) {
                 OutlinedTextField(
                     value = formState.titulo,
                     onValueChange = { viewModel.actualizarCampo { copy(titulo = it) } },
@@ -448,21 +451,21 @@ fun AddReminderDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 //Text(stringResource(id = R.string.imagen), style = MaterialTheme.typography.titleSmall)
 
-//                Row(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .padding(vertical = 8.dp),
-//                    verticalAlignment = Alignment.CenterVertically
-//                ) {
-//                    IconButton(onClick = {
-//                        val nuevaUri = crearUriPersistente(context)
-//                        uriPersistente = nuevaUri
-//                        launcherCamara.launch(nuevaUri)
-//                    }) {
-//                        Icon(Icons.Default.CameraAlt, contentDescription = "Abrir cámara")
-//                    }
-//                    Text(text = stringResource(id = R.string.tomar_foto), modifier = Modifier.padding(start = 8.dp))
-//                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = {
+                        val nuevaUri = crearUriPersistente(context)
+                        uriPersistente = nuevaUri
+                        launcherCamara.launch(nuevaUri)
+                    }) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = "Abrir cámara")
+                    }
+                    Text(text = stringResource(id = R.string.tomar_foto), modifier = Modifier.padding(start = 8.dp))
+                }
 
                 Row(
                     modifier = Modifier
@@ -484,12 +487,12 @@ fun AddReminderDialog(
 
                     Text(text = stringResource(id = R.string.tomar_video), modifier = Modifier.padding(start = 8.dp))
                 }
-
-                Text(
-                    text = "Video URI: ${formState.videoUri ?: "Sin video"}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = Color.Blue
-                )
+//
+//                Text(
+//                    text = "Video URI: ${formState.videoUri ?: "Sin video"}",
+//                    style = MaterialTheme.typography.titleSmall,
+//                    color = Color.Blue
+//                )
 
                 ///AQUI ES PARA QUE SE MUESTRE LA IMAGEN PERSISTENTE
                 formState.imagenUri?.let { uriString ->
@@ -505,6 +508,45 @@ fun AddReminderDialog(
                         contentScale = ContentScale.Crop
                     )
                 }
+
+                formState.videoUri?.takeIf { it.isNotBlank() }?.let { uriString ->
+                    val uri = Uri.parse(uriString)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black)
+                    ) {
+                        AndroidView(
+                            factory = { ctx ->
+                                VideoView(ctx).apply {
+                                    setVideoURI(uri)
+                                    setOnPreparedListener { mp ->
+                                        mp.isLooping = true
+                                        start()
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        IconButton(
+                            onClick = {
+                                viewModel.actualizarCampo { copy(videoUri = null) }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar video", tint = Color.White)
+                        }
+                    }
+                } ?: Text(
+                    text = "Sin video",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
 
 
             }

@@ -1,8 +1,12 @@
 package com.dev.uiElements
 
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
 import android.net.Uri
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -25,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -34,11 +39,16 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.dev.Dao.Recordatorio
 import com.dev.agenda_movil.AppViewModelProvider
+import com.dev.agenda_movil.MainActivity
 import com.dev.agenda_movil.R
 import com.dev.utils.crearUriPersistente
+import com.dev.utils.crearUriVideoPersistente
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material.icons.filled.Videocam
+
+
 
 
 @Composable
@@ -280,6 +290,7 @@ fun ReminderItem(
     }
 }
 
+//VENTANA PARA AGREGAR RECORDATORIOS
 @Composable
 fun AddReminderDialog(
     onDismiss: () -> Unit,
@@ -292,14 +303,27 @@ fun AddReminderDialog(
     val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
     val formState = viewModel.formState.value
 
-    var uriTemporal by remember { mutableStateOf<Uri?>(null) }
+    //
+    var uriPersistente by remember { mutableStateOf<Uri?>(null) }
 
+    //AQUI SE USA PARA ABRIR LA CAMARA'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     val launcherCamara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        val uri = uriTemporal
+        val uri = uriPersistente
         if (success && uri != null) {
             viewModel.actualizarCampo { copy(imagenUri = uri.toString()) }
         }
     }
+
+    //
+    val launcherVideo = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
+        val uri = uriPersistente
+        if (success && uri != null) {
+            viewModel.actualizarCampo { copy(videoUri = uri.toString()) }
+        }
+    }
+
+
+
 
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
@@ -338,7 +362,7 @@ fun AddReminderDialog(
                     viewModel.limpiarFormulario()
                 }
             }) {
-                Text(stringResource(id = R.string.guardar))
+                Text(stringResource(id = R.string.guardar))     //BOTON DE GUARDAAARRRRRRRR
             }
         },
         dismissButton = {
@@ -422,7 +446,23 @@ fun AddReminderDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(id = R.string.imagen), style = MaterialTheme.typography.titleSmall)
+                //Text(stringResource(id = R.string.imagen), style = MaterialTheme.typography.titleSmall)
+
+//                Row(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(vertical = 8.dp),
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    IconButton(onClick = {
+//                        val nuevaUri = crearUriPersistente(context)
+//                        uriPersistente = nuevaUri
+//                        launcherCamara.launch(nuevaUri)
+//                    }) {
+//                        Icon(Icons.Default.CameraAlt, contentDescription = "Abrir cámara")
+//                    }
+//                    Text(text = stringResource(id = R.string.tomar_foto), modifier = Modifier.padding(start = 8.dp))
+//                }
 
                 Row(
                     modifier = Modifier
@@ -431,15 +471,27 @@ fun AddReminderDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = {
-                        val nuevaUri = crearUriPersistente(context)
-                        uriTemporal = nuevaUri
-                        launcherCamara.launch(nuevaUri)
+                        if ((context as MainActivity).tienePermisosGaleria()) {
+                            val nuevaUriVideo = crearUriVideoPersistente(context)
+                            uriPersistente = nuevaUriVideo
+                            launcherVideo.launch(nuevaUriVideo)
+                        } else {
+                            Toast.makeText(context, "No puedes grabar video sin permisos", Toast.LENGTH_SHORT).show()
+                        }
                     }) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = "Abrir cámara")
+                        Icon(Icons.Default.Videocam, contentDescription = "Grabar video")
                     }
-                    Text(text = stringResource(id = R.string.tomar_foto), modifier = Modifier.padding(start = 8.dp))
+
+                    Text(text = stringResource(id = R.string.tomar_video), modifier = Modifier.padding(start = 8.dp))
                 }
 
+                Text(
+                    text = "Video URI: ${formState.videoUri ?: "Sin video"}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.Blue
+                )
+
+                ///AQUI ES PARA QUE SE MUESTRE LA IMAGEN PERSISTENTE
                 formState.imagenUri?.let { uriString ->
                     //val uri = Uri.parse(uriString)
                     AsyncImage(

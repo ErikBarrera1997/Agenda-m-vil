@@ -1,10 +1,10 @@
 package com.dev.Camara
 
 import android.content.Context
-import android.media.MediaScannerConnection
 import android.net.Uri
-import java.io.File
 
+
+//AQUI SE USAN LAS FUNCIONALIDADES QUE SE HACEN SOBRE LA IMAGEN, BORRAN EN MEMORIA FISICA
 object ImagenHelper {
     fun eliminarImagen(context: Context, uriString: String?) {
         uriString?.let {

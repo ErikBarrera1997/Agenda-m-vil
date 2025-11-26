@@ -3,18 +3,22 @@ package com.dev.uiElements
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.net.Uri
+import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,14 +31,15 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.dev.Data.RecordatorioFormState
 import com.dev.agenda_movil.R
 import com.dev.utils.crearUriPersistente
+import com.dev.utils.crearUriVideoPersistente
 import kotlinx.coroutines.launch
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -185,6 +190,13 @@ fun EditarRecordatorioDialog(
                 //Text("URI: ${formState.imagenUri}")
                 Spacer(modifier = Modifier.height(8.dp))
 
+                Text(
+                    text = "Video URI: ${formState.videoUri ?: "Sin video"}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.Blue // opcional, para resaltarlo
+                )
+
+
                 //Bloque de imagen con vista previa, expandir y borrar
                 formState.imagenUri?.takeIf { it.isNotBlank() }?.let { uriString ->
                     val uri = Uri.parse(uriString)
@@ -234,9 +246,100 @@ fun EditarRecordatorioDialog(
                     Spacer(Modifier.width(4.dp))
                     Text("Agregar imagen")
                 }
+
+                // Bloque de video con vista previa, cambiar y borrar
+                formState.videoUri?.takeIf { it.isNotBlank() }?.let { uriString ->
+                    val uri = Uri.parse(uriString)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black)
+                    ) {
+                        AndroidView(
+                            factory = { ctx ->
+                                VideoView(ctx).apply {
+                                    setVideoURI(uri)
+                                    setOnPreparedListener { mp ->
+                                        mp.isLooping = true
+                                        start()
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        IconButton(
+                            onClick = {
+                                //VideoHelper.eliminarVideo(context, uriString)
+                                onUpdate { copy(videoUri = null) }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar video", tint = Color.White)
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        TextButton(onClick = {
+                            val nueva = crearUriVideoPersistente(context)
+                            onUpdate { copy(videoUri = nueva.toString()) }
+                        }) {
+                            Icon(Icons.Default.Videocam, contentDescription = "Cambiar video")
+                            Spacer(Modifier.width(4.dp))
+                            Text("Cambiar")
+                        }
+                    }
+                } ?: TextButton(onClick = {
+                    val nueva = crearUriVideoPersistente(context)
+                    onUpdate { copy(videoUri = nueva.toString()) }
+                }) {
+                    Icon(Icons.Default.Videocam, contentDescription = "Agregar video")
+                    Spacer(Modifier.width(4.dp))
+                    Text("Agregar video")
+                }
+
+
+
             }
         }
     )
+
+// Diálogo para expandir imagen
+    if (showImagePreview) {
+        AlertDialog(
+            onDismissRequest = { showImagePreview = false },
+            text = {
+                AsyncImage(
+                    model = Uri.parse(formState.imagenUri ?: ""), //convertir a Uri
+                    contentDescription = "Imagen completa",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showImagePreview = false }) {
+                    Text("Cerrar")
+                }
+            }
+        )
+    }
+
+
+
+
+
+
+
+
 
     // Diálogo para expandir imagen
     if (showImagePreview) {

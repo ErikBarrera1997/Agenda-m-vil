@@ -51,6 +51,7 @@ class RecordatoriosViewModel(
         _formState.value = _formState.value.update()
     }
 
+    //AQUI SE CONSTRUYE EL RECORDATORIO
     fun validarYConstruir(): Recordatorio? {
         val state = _formState.value
         val camposValidos = state.titulo.isNotBlank() &&
@@ -67,7 +68,8 @@ class RecordatoriosViewModel(
                 fechaFin = state.fechaFin.ifBlank { null },
                 horaFin = state.horaFin.ifBlank { null },
                 cumplido = state.cumplido,
-                imagenUri = state.imagenUri // ✅ recuperamos el campo
+                imagenUri = state.imagenUri,
+                videoUri = state.videoUri
             )
         } else {
             _formState.value = state.copy(showErrors = true)

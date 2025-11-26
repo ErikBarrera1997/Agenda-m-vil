@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import com.dev.utils.crearUriPersistente
 
 
+//ESTO YA NO SIRVE
 @Composable
 fun CapturaFotoDesdeCamara(
     onFotoCapturada: (Uri) -> Unit

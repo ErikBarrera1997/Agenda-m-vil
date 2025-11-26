@@ -1,26 +1,13 @@
 package com.dev.utils
 
-import android.Manifest
 import android.content.ContentValues
 import android.content.Context
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
-import java.io.File
 
-//fun crearUriTemporal(context: Context): Uri {
-  //  val imageFile = File.createTempFile("recordatorio_", ".jpg", context.cacheDir).apply {
-    //    createNewFile()
-      //  deleteOnExit()
-   // }
-    //return FileProvider.getUriForFile(context, "${context.packageName}.provider", imageFile)
-//}
-
-
+///AQUI  SE CREAN LAS URIS
 /////ESTE ES EL PRIVIDER
 fun crearUriPersistente(context: Context): Uri {
     val values = ContentValues().apply {
@@ -40,4 +27,16 @@ fun crearUriPersistente(context: Context): Uri {
     }
 
     return uri
+}
+
+fun crearUriVideoPersistente(context: Context): Uri {
+    val values = ContentValues().apply {
+        put(MediaStore.Video.Media.DISPLAY_NAME, "video_${System.currentTimeMillis()}.mp4")
+        put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/Recordatorios")
+        }
+    }
+    return context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+        ?: throw IllegalStateException("No se pudo crear la URI persistente para video.")
 }

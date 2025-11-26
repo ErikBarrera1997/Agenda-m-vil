@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
                         RecordatoriosScreen(
                             navController = navController,
                             windowSizeClass = windowSizeClass,
-                           // onAgregarFoto = { abrirCamara() } // 👈 pasamos acción
+                           // onAgregarFoto = { abrirCamara() }
                         )
                     }
 

@@ -34,7 +34,7 @@ class EditComposablesViewModel(
     private val _snackbarMessage = mutableStateOf<String?>(null)
     val snackbarMessage: State<String?> = _snackbarMessage
 
-    // ✅ Inicializar formulario con datos del recordatorio
+    // Inicializar formulario con datos del recordatorio
     fun inicializarFormulario(recordatorio: Recordatorio) {
         _formState.value = RecordatorioFormState(
             titulo = recordatorio.titulo,
@@ -44,17 +44,19 @@ class EditComposablesViewModel(
             fechaFin = recordatorio.fechaFin ?: "",
             horaFin = recordatorio.horaFin ?: "",
             cumplido = recordatorio.cumplido,
-            imagenUri = recordatorio.imagenUri
+            imagenUri = recordatorio.imagenUri,
+            videoUri = recordatorio.videoUri,
+            showErrors = false
         )
         _mostrarDialogo.value = true
     }
 
-    // ✅ Actualizar campos del formulario
+    //Actualizar campos del formulario
     fun actualizarCampo(update: RecordatorioFormState.() -> RecordatorioFormState) {
         _formState.value = _formState.value.update()
     }
 
-    // ✅ Validar y construir objeto Recordatorio
+    //Validar y construir objeto Recordatorio
     fun validarYConstruir(): Recordatorio? {
         val state = _formState.value
         val camposValidos = state.titulo.isNotBlank() &&

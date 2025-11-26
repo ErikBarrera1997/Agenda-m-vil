@@ -23,6 +23,7 @@
     <string name="recordatorio_editado">Recordatorio editado</string>
     <string name="imagen">Imagen</string>
     <string name="tomar_foto">Tomar foto</string>
+    <string name="tomar_video">Tomar video</string>
 
 
     <!-- mainComposables -->

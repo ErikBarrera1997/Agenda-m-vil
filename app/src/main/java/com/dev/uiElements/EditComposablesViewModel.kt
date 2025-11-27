@@ -2,6 +2,7 @@ package com.dev.uiElements
 
 import android.content.Context
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.State
 import com.dev.Camara.ImagenHelper
+import com.dev.Camara.VideosHelper
 
 class EditComposablesViewModel(
     private val repository: RecordatoriosRepository,
@@ -106,6 +108,45 @@ class EditComposablesViewModel(
         }
         _formState.value = _formState.value.copy(imagenUri = nuevaUri.toString())
     }
+
+    fun eliminarVideo(context: Context) {
+        val uriString = _formState.value.videoUri ?: return
+        val eliminado = VideosHelper.eliminarVideo(context, uriString)
+
+        if (eliminado) {
+            _formState.value = _formState.value.copy(videoUri = null)
+
+            // Actualiza también en la BD usando el repository
+            recordatorio.value?.let { actual ->
+                val actualizado = actual.copy(videoUri = null)
+                viewModelScope.launch {
+                    repository.update(actualizado)
+                }
+            }
+        }
+    }
+
+
+    fun cambiarVideo(context: Context, nuevaUri: Uri) {
+        val fd = context.contentResolver.openFileDescriptor(nuevaUri, "r")
+        if (fd != null) {
+            formState.value.videoUri?.let { uriString ->
+                VideosHelper.eliminarVideo(context, uriString) // borra el anterior
+            }
+            _formState.value = _formState.value.copy(videoUri = nuevaUri.toString())
+
+            // Actualiza también en la BD
+            recordatorio.value?.let { actual ->
+                val actualizado = actual.copy(videoUri = nuevaUri.toString())
+                viewModelScope.launch {
+                    repository.update(actualizado)
+                }
+            }
+        } else {
+            Toast.makeText(context, "El nuevo video no es válido", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     fun cerrarDialogo() {
         _mostrarDialogo.value = false

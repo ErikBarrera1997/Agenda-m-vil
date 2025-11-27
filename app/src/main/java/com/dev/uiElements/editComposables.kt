@@ -3,6 +3,7 @@ package com.dev.uiElements
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.net.Uri
+import android.widget.Toast
 import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.util.copy
 import coil.compose.AsyncImage
 import com.dev.Data.RecordatorioFormState
 import com.dev.agenda_movil.R
@@ -50,7 +52,10 @@ fun EditarRecordatorioDialog(
     onSave: () -> Unit,
     onUpdate: (RecordatorioFormState.() -> RecordatorioFormState) -> Unit,
     onCambiarImagen: (Uri) -> Unit,
-    onEliminarImagen: () -> Unit
+    onEliminarImagen: () -> Unit,
+    onCambiarVideo: () -> Unit,
+    onEliminarVideo: () -> Unit
+
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
@@ -263,23 +268,22 @@ fun EditarRecordatorioDialog(
                             .background(Color.Black)
                     ) {
                         AndroidView(
-                            factory = { ctx ->
-                                VideoView(ctx).apply {
-                                    setVideoURI(uri)
-                                    setOnPreparedListener { mp ->
-                                        mp.isLooping = true
-                                        start()
-                                    }
+                            factory = { ctx -> VideoView(ctx) },
+                            modifier = Modifier.fillMaxSize(),
+                            update = { videoView ->
+                                videoView.setVideoURI(uri)
+                                videoView.setOnPreparedListener { mp ->
+                                    mp.isLooping = true
+                                    videoView.start()
                                 }
-                            },
-                            modifier = Modifier.fillMaxSize()
+                                videoView.setOnErrorListener { _, _, _ ->
+                                    Toast.makeText(context, "No se pudo reproducir el video", Toast.LENGTH_SHORT).show()
+                                    true
+                                }
+                            }
                         )
-
                         IconButton(
-                            onClick = {
-                                //VideoHelper.eliminarVideo(context, uriString)
-                                onUpdate { copy(videoUri = null) }
-                            },
+                            onClick = onEliminarVideo,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .background(Color.Black.copy(alpha = 0.5f), CircleShape)
@@ -293,8 +297,8 @@ fun EditarRecordatorioDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         TextButton(onClick = {
-                            val nueva = crearUriVideoPersistente(context)
-                            onUpdate { copy(videoUri = nueva.toString()) }
+                            //val nueva = crearUriVideoPersistente(context)
+                            onCambiarVideo()
                         }) {
                             Icon(Icons.Default.Videocam, contentDescription = "Cambiar video")
                             Spacer(Modifier.width(4.dp))
@@ -302,8 +306,8 @@ fun EditarRecordatorioDialog(
                         }
                     }
                 } ?: TextButton(onClick = {
-                    val nueva = crearUriVideoPersistente(context)
-                    onUpdate { copy(videoUri = nueva.toString()) }
+                    //val nueva = crearUriVideoPersistente(context)
+                    onCambiarVideo()
                 }) {
                     Icon(Icons.Default.Videocam, contentDescription = "Agregar video")
                     Spacer(Modifier.width(4.dp))
@@ -358,11 +362,24 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     var nuevaUri by remember { mutableStateOf<Uri?>(null) }
-
     val launcherCamara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
             nuevaUri?.let { uri ->
                 viewModel.actualizarCampo { copy(imagenUri = uri.toString()) }
+            }
+        }
+    }
+
+    var nuevaUriVideo by remember { mutableStateOf<Uri?>(null) }
+    val launcherVideo = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
+        if (success) {
+            nuevaUriVideo?.let { uri ->
+                val fd = context.contentResolver.openFileDescriptor(uri, "r")
+                if (fd != null) {
+                    viewModel.cambiarVideo(context, uri) // guarda la URI válida
+                } else {
+                    Toast.makeText(context, "El video no se grabó correctamente", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -402,9 +419,16 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
                         viewModel.cambiarImagen(context, uri)
                     },
                     onEliminarImagen = {
-                        viewModel.eliminarImagen(context) //pasa el context
+                        viewModel.eliminarImagen(context)
+                    },
+                    onCambiarVideo = {
+                        val nueva = crearUriVideoPersistente(context)
+                        nuevaUriVideo = nueva
+                        launcherVideo.launch(nueva)
+                    },
+                    onEliminarVideo = {
+                        viewModel.eliminarVideo(context)
                     }
-
                 )
             }
         }

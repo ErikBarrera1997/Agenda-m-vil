@@ -44,14 +44,18 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
-            val imagesGranted =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    permissions[Manifest.permission.READ_MEDIA_IMAGES] ?: false
-                } else {
-                    permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
-                }
+            val imagesGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                permissions[Manifest.permission.READ_MEDIA_IMAGES] ?: false
+            } else {
+                permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
+            }
+            val videosGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                permissions[Manifest.permission.READ_MEDIA_VIDEO] ?: false
+            } else {
+                true
+            }
 
-            permisosConcedidos = cameraGranted && imagesGranted
+            permisosConcedidos = cameraGranted && imagesGranted && videosGranted
 
             if (!permisosConcedidos) {
                 Toast.makeText(this, "No se otorgaron permisos de cámara/galería", Toast.LENGTH_SHORT).show()
@@ -73,8 +77,8 @@ class MainActivity : ComponentActivity() {
         //crear canal de notificación
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                "recordatorios_channel",              // ID único
-                "Recordatorios",                      // Nombre visible en ajustes
+                "recordatorios_channel",
+                "Recordatorios",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Canal para recordatorios"
@@ -93,10 +97,11 @@ class MainActivity : ComponentActivity() {
         }
 
 
-        //pedir permisos de cámara + imágenes
+        //pedir permisos de cámara + imágenes y tambien videoooooooos
         val permisos = mutableListOf(Manifest.permission.CAMERA)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permisos.add(Manifest.permission.READ_MEDIA_IMAGES)
+            permisos.add(Manifest.permission.READ_MEDIA_VIDEO) // 👈 necesario para videos
         } else {
             permisos.add(Manifest.permission.READ_EXTERNAL_STORAGE)
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
@@ -104,6 +109,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         requestPermissionsLauncher.launch(permisos.toTypedArray())
+
 
         setContent {
             Agenda_movilTheme {
@@ -141,10 +147,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ✅ Helper
+    // Helper
     fun tienePermisosGaleria(): Boolean = permisosConcedidos
 
-    // ✅ Acción para abrir cámara
+    //Acción para abrir cámara
     fun abrirCamara() {
         if (tienePermisosGaleria()) {
             val uri = crearUriPersistente(this)

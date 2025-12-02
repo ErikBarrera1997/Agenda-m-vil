@@ -13,7 +13,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
 
-    <!-- Almacenamiento -->+
+    <!-- Almacenamiento -->
     <!-- Android 13+ (API 33) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Android 10–12 -->
@@ -26,7 +26,8 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
-
+    <!-- Permiso para recibir BOOT_COMPLETED -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
             android:allowBackup="true"
@@ -36,9 +37,6 @@
             android:supportsRtl="true"
             android:theme="@style/Theme.Agenda_movil"
             android:name=".AgendaApplication">
-
-        <!-- ✅ Ya no necesitas FileProvider si usas MediaStore -->
-        <!-- Bloque eliminado -->
 
         <activity
                 android:name=".MainActivity"
@@ -52,7 +50,16 @@
         </activity>
 
         <receiver android:name="com.dev.notifications.NotificacionReceiver" />
+        <receiver android:name="com.dev.notifications.SubNotificacionReceiver" />
+        <receiver android:name="com.dev.notifications.CancelReceiver" />
+
+        <receiver android:name="com.dev.system.BootReceiverSystem"
+                  android:enabled="true"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
 
     </application>
-
 </manifest>

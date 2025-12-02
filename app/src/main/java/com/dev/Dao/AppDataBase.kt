@@ -4,10 +4,13 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.dev.Data.Converters
 
-@Database(entities = [Recordatorio::class], version = 4, exportSchema = false)
+@Database(entities = [Recordatorio::class], version = 6, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun recordatorioDao(): RecordatorioDao
@@ -20,11 +23,11 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "recordatorios.db"
-                ).fallbackToDestructiveMigration().build().also { INSTANCE = it }
+                ).build().also { INSTANCE = it }
 
             }
         }
     }
-
+//.fallbackToDestructiveMigration()
 }
 

@@ -1,15 +1,23 @@
 package com.dev.uiElements
 
+import android.Manifest
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.net.Uri
+import android.provider.MediaStore
+import android.widget.Button
 import android.widget.Toast
 import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,9 +25,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,10 +40,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.room.util.copy
 import coil.compose.AsyncImage
+import com.dev.Dao.SubNotificacion
 import com.dev.Data.RecordatorioFormState
+import com.dev.agenda_movil.MainActivity
 import com.dev.agenda_movil.R
 import com.dev.utils.crearUriPersistente
 import com.dev.utils.crearUriVideoPersistente
@@ -51,18 +59,20 @@ fun EditarRecordatorioDialog(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onUpdate: (RecordatorioFormState.() -> RecordatorioFormState) -> Unit,
-    onCambiarImagen: (Uri) -> Unit,
-    onEliminarImagen: () -> Unit,
-    onCambiarVideo: () -> Unit,
-    onEliminarVideo: () -> Unit
-
+    onAgregarImagen: (Uri) -> Unit,
+    onEliminarImagen: (String) -> Unit,
+    onAgregarVideo: () -> Unit,
+    onEliminarVideo: (String) -> Unit,
+    onAgregarAudio: () -> Unit,
+    onEliminarAudio: (String) -> Unit,
+    onAgregarSubnotificacion: (SubNotificacion) -> Unit,
+    onEliminarSubnotificacion: (SubNotificacion) -> Unit
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val focusManager = LocalFocusManager.current
-    var showImagePreview by remember { mutableStateOf(false) }
-
+    //var showImagePreview by remember { mutableStateOf(false) }
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
             context,
@@ -90,6 +100,8 @@ fun EditarRecordatorioDialog(
         ).show()
     }
 
+    var showSubDialog by remember { mutableStateOf(false) }
+
     val scrollState = rememberScrollState()
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -111,6 +123,58 @@ fun EditarRecordatorioDialog(
                     .fillMaxWidth()
                     .verticalScroll(scrollState) //habilita scroll
             ){
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { showSubDialog = true }) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Configurar subnotificaciones")
+                        Spacer(Modifier.width(4.dp))
+                        Text("Configurar")
+                    }
+
+                }
+
+                formState.subnotificaciones.forEach { sub ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Cada ${sub.intervaloMinutos} min hasta ${sub.fechaFin} ${sub.horaFin}")
+                        IconButton(onClick = { onEliminarSubnotificacion(sub) }) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Eliminar subnotificación",
+                                tint = Color.Red
+                            )
+                        }
+                    }
+                }
+
+
+                if (showSubDialog) {
+                    ConfigurarSubnotificacionesDialog(
+                        fechaInicio = formState.fechaInicio,
+                        horaInicio = formState.horaInicio,
+                        fechaFin = formState.fechaFin,
+                        horaFin = formState.horaFin,
+                        onDismiss = { showSubDialog = false },
+                        onSave = { sub ->
+                            onUpdate {
+                                copy(subnotificaciones = subnotificaciones + sub)
+                            }
+                            showSubDialog = false
+                        }
+                    )
+                }
+
+
+
                 OutlinedTextField(
                     value = formState.titulo,
                     onValueChange = { onUpdate { copy(titulo = it) } },
@@ -200,150 +264,194 @@ fun EditarRecordatorioDialog(
                 //Text("URI: ${formState.imagenUri}")
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = "Video URI: ${formState.videoUri ?: "Sin video"}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = Color.Blue // opcional, para resaltarlo
-                )
-
-
-                //Bloque de imagen con vista previa, expandir y borrar
-                formState.imagenUri?.takeIf { it.isNotBlank() }?.let { uriString ->
-                    val uri = Uri.parse(uriString)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.LightGray)
-                            .clickable { showImagePreview = true }
+//=============================================================================================================
+                if (formState.imagenesUri.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        AsyncImage(
-                            model = uri,
-                            contentDescription = "Imagen adjunta",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        items(formState.imagenesUri) { uriString ->
+                            val uri = Uri.parse(uriString)
+                            Box(
+                                modifier = Modifier
+                                    .width(180.dp)
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.LightGray)
+                                    //.clickable { showImagePreview = true }
+                            ) {
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = "Imagen adjunta",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
 
-                        IconButton(
-                            onClick = onEliminarImagen,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar imagen", tint = Color.White)
+                                IconButton(
+                                    onClick = { onEliminarImagen(uriString) }, // 👈 ahora recibe el uri específico
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar imagen", tint = Color.White)
+                                }
+                            }
                         }
                     }
 
+                    // Botón para agregar otra imagen
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         TextButton(onClick = {
                             val nueva = crearUriPersistente(context)
-                            onCambiarImagen(nueva)
+                            onAgregarImagen(nueva)
                         }) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = "Cambiar imagen")
+                            Icon(Icons.Default.CameraAlt, contentDescription = "Agregar imagen")
                             Spacer(Modifier.width(4.dp))
-                            Text("Cambiar")
+                            Text("Agregar")
                         }
                     }
-                } ?: TextButton(onClick = {
-                    val nueva = crearUriPersistente(context)
-                    onCambiarImagen(nueva)
-                }) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = "Agregar imagen")
-                    Spacer(Modifier.width(4.dp))
-                    Text("Agregar imagen")
+                } else {
+                    TextButton(onClick = {
+                        val nueva = crearUriPersistente(context)
+                        onAgregarImagen(nueva)
+                    }) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = "Agregar imagen")
+                        Spacer(Modifier.width(4.dp))
+                        Text("Agregar imagen")
+                    }
                 }
-
-                // Bloque de video con vista previa, cambiar y borrar
-                formState.videoUri?.takeIf { it.isNotBlank() }?.let { uriString ->
-                    val uri = Uri.parse(uriString)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black)
+ //VIDEOS===============================================================
+//=================================================================================================================
+                if (formState.videosUri.isNotEmpty()) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        AndroidView(
-                            factory = { ctx -> VideoView(ctx) },
-                            modifier = Modifier.fillMaxSize(),
-                            update = { videoView ->
-                                videoView.setVideoURI(uri)
-                                videoView.setOnPreparedListener { mp ->
-                                    mp.isLooping = true
-                                    videoView.start()
+                        formState.videosUri.forEach { uriString ->
+                            val uri = Uri.parse(uriString)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.Black)
+                            ) {
+                                AndroidView(
+                                    factory = { ctx -> VideoView(ctx) },
+                                    modifier = Modifier.fillMaxSize(),
+                                    update = { videoView ->
+                                        videoView.setVideoURI(uri)
+                                        videoView.setOnPreparedListener { mp ->
+                                            mp.isLooping = true
+                                            videoView.start()
+                                        }
+                                        videoView.setOnErrorListener { _, _, _ ->
+                                            Toast.makeText(context, "No se pudo reproducir el video", Toast.LENGTH_SHORT).show()
+                                            true
+                                        }
+                                    }
+                                )
+                                IconButton(
+                                    onClick = { onEliminarVideo(uriString) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar video", tint = Color.White)
                                 }
-                                videoView.setOnErrorListener { _, _, _ ->
-                                    Toast.makeText(context, "No se pudo reproducir el video", Toast.LENGTH_SHORT).show()
-                                    true
-                                }
+
                             }
-                        )
-                        IconButton(
-                            onClick = onEliminarVideo,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar video", tint = Color.White)
                         }
                     }
 
+                    // Botón para agregar otro video
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        TextButton(onClick = {
-                            //val nueva = crearUriVideoPersistente(context)
-                            onCambiarVideo()
-                        }) {
-                            Icon(Icons.Default.Videocam, contentDescription = "Cambiar video")
+                        TextButton(onClick = { onAgregarVideo() }) {
+                            Icon(Icons.Default.Videocam, contentDescription = "Agregar video")
                             Spacer(Modifier.width(4.dp))
-                            Text("Cambiar")
+                            Text("Agregar")
                         }
                     }
-                } ?: TextButton(onClick = {
-                    //val nueva = crearUriVideoPersistente(context)
-                    onCambiarVideo()
-                }) {
-                    Icon(Icons.Default.Videocam, contentDescription = "Agregar video")
-                    Spacer(Modifier.width(4.dp))
-                    Text("Agregar video")
+                } else {
+                    TextButton(onClick = { onAgregarVideo() }) {
+                        Icon(Icons.Default.Videocam, contentDescription = "Agregar video")
+                        Spacer(Modifier.width(4.dp))
+                        Text("Agregar video")
+                    }
                 }
+//============================================================================================================
+                if (formState.audiosUri.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(formState.audiosUri) { uriString ->
+                            val uri = Uri.parse(uriString)
+                            Box(
+                                modifier = Modifier
+                                    .width(200.dp)
+                                    .height(80.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.DarkGray)
+                            ) {
+                                // Preview simple con botón Play
+                                AndroidView<Button>(
+                                    factory = { ctx ->
+                                        Button(ctx).apply {
+                                            text = "Play"
+                                            setOnClickListener {
+                                                val player = MediaPlayer().apply {
+                                                    setDataSource(ctx, uri)
+                                                    setOnPreparedListener { start() }
+                                                }
+                                                player.prepareAsync()
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
 
+                                IconButton(
+                                    onClick = { onEliminarAudio(uriString) }, // 👈 callback
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar audio", tint = Color.White)
+                                }
+                            }
+                        }
+                    }
 
-
+                    // Botón para agregar otro audio
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        TextButton(onClick = { onAgregarAudio() }) {
+                            Icon(Icons.Default.Mic, contentDescription = "Agregar audio")
+                            Spacer(Modifier.width(4.dp))
+                            Text("Agregar")
+                        }
+                    }
+                } else {
+                    TextButton(onClick = { onAgregarAudio() }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Agregar audio")
+                        Spacer(Modifier.width(4.dp))
+                        Text("Agregar audio")
+                    }
+                }
             }
         }
     )
 
-// Diálogo para expandir imagen
-    if (showImagePreview) {
-        AlertDialog(
-            onDismissRequest = { showImagePreview = false },
-            text = {
-                AsyncImage(
-                    model = Uri.parse(formState.imagenUri ?: ""), //convertir a Uri
-                    contentDescription = "Imagen completa",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp)
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showImagePreview = false }) {
-                    Text("Cerrar")
-                }
-            }
-        )
-    }
-
 }
-
 
 @Composable
 fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
@@ -365,7 +473,7 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
     val launcherCamara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
             nuevaUri?.let { uri ->
-                viewModel.actualizarCampo { copy(imagenUri = uri.toString()) }
+                viewModel.agregarImagen(context, uri)
             }
         }
     }
@@ -376,13 +484,26 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
             nuevaUriVideo?.let { uri ->
                 val fd = context.contentResolver.openFileDescriptor(uri, "r")
                 if (fd != null) {
-                    viewModel.cambiarVideo(context, uri) // guarda la URI válida
+                    viewModel.agregarVideo(context, uri)
                 } else {
                     Toast.makeText(context, "El video no se grabó correctamente", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
+
+    val launcherAudio = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                viewModel.actualizarCampo {
+                    copy(audiosUri = audiosUri + uri.toString())
+                }
+            }
+        }
+    }
+
 
     LaunchedEffect(recordatorio) {
         recordatorio?.let { viewModel.inicializarFormulario(it) }
@@ -413,21 +534,40 @@ fun EditReminderScreen(recordatorioId: Int, onBack: () -> Unit) {
                         }
                     },
                     onUpdate = { viewModel.actualizarCampo(it) },
-                    onCambiarImagen = { uri ->
+                    onAgregarImagen = { uri ->
                         nuevaUri = uri
                         launcherCamara.launch(uri)
-                        viewModel.cambiarImagen(context, uri)
                     },
-                    onEliminarImagen = {
-                        viewModel.eliminarImagen(context)
+                    onEliminarImagen = { uri ->
+                        viewModel.eliminarImagen(context, uri)
                     },
-                    onCambiarVideo = {
+                    onAgregarVideo = {
                         val nueva = crearUriVideoPersistente(context)
                         nuevaUriVideo = nueva
                         launcherVideo.launch(nueva)
                     },
-                    onEliminarVideo = {
-                        viewModel.eliminarVideo(context)
+                    onEliminarVideo = { uri ->
+                        viewModel.eliminarVideo(context, uri)
+                    },
+                    onAgregarAudio = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                            == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            // Si ya tiene permiso, lanzar grabadora
+                            val intent = Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION)
+                            launcherAudio.launch(intent)
+                        } else {
+                            (context as? MainActivity)?.solicitarPermisoAudio()
+                        }
+                    },
+                    onEliminarAudio = { uri ->
+                        viewModel.eliminarAudio(context, uri)
+                    },
+                    onAgregarSubnotificacion = { sub ->
+                        viewModel.agregarSubnotificacion(sub)
+                    },
+                    onEliminarSubnotificacion = { sub: SubNotificacion ->
+                        viewModel.eliminarSubnotificacion(context, sub)
                     }
                 )
             }

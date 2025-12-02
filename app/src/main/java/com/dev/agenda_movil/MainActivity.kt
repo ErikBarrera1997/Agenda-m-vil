@@ -8,9 +8,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -26,7 +28,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.dev.Dao.Recordatorio
 import com.dev.agenda_movil.ui.theme.Agenda_movilTheme
+import com.dev.notifications.CancelReceiver
 import com.dev.notifications.NotificacionReceiver
+import com.dev.notifications.SubNotificacionReceiver
 import com.dev.uiElements.AddReminderScreen
 import com.dev.uiElements.EditReminderScreen
 import com.dev.uiElements.RecordatoriosScreen
@@ -39,8 +43,9 @@ import java.util.*
 class MainActivity : ComponentActivity() {
 
     private var permisosConcedidos = false
+    private var audioDenegadoCount = 0 // 👈 contador de rechazos
 
-    // Launcher para permisos múltiples
+    // Launcher para permisos múltiples (cámara/galería)
     private val requestPermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
@@ -70,6 +75,36 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    // Launcher para audio
+    private val requestAudioPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                audioDenegadoCount = 0 // reset si lo concede
+                Toast.makeText(this, "Permiso de audio concedido", Toast.LENGTH_SHORT).show()
+            } else {
+                audioDenegadoCount++
+                if (audioDenegadoCount >= 2) {
+                    // 👇 Enviar al usuario a ajustes de la app
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", packageName, null)
+                    }
+                    startActivity(intent)
+                    Toast.makeText(this, "Habilita el permiso de audio en Ajustes", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, "Permiso de audio denegado", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
+    fun solicitarPermisoAudio() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,6 +130,21 @@ class MainActivity : ComponentActivity() {
                 requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+
+        //CHANNEL DE SUBNOTIFICACIONES
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val subChannel = NotificationChannel(
+                "subnotificaciones_channel",
+                "Subnotificaciones",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Canal para subnotificaciones periódicas"
+            }
+
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(subChannel)
+        }
+
 
 
         //pedir permisos de cámara + imágenes y tambien videoooooooos
@@ -163,9 +213,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
-
-
     fun programarNotificacion(recordatorio: Recordatorio, triggerTimeMillis: Long) {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
@@ -204,6 +251,53 @@ class MainActivity : ComponentActivity() {
             )
         } catch (e: SecurityException) {
             Toast.makeText(this, "Error al programar la notificación: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+
+    fun programarSubnotificaciones(context: Context, recordatorio: Recordatorio) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        recordatorio.subnotificaciones.forEach { sub ->
+            val intent = Intent(context, SubNotificacionReceiver::class.java).apply {
+                putExtra("titulo", recordatorio.titulo)
+                putExtra("descripcion", recordatorio.descripcion)
+            }
+
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                sub.hashCode(), // id único para cada subnotificación
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            //Calcula inicio y fin usando helper
+            val horaInicio = convertirFechaHoraATimestamp(sub.fechaInicio, sub.horaInicio)
+            val horaFin = convertirFechaHoraATimestamp(sub.fechaFin, sub.horaFin)
+            val intervaloMillis = sub.intervaloMinutos * 60 * 1000L
+
+            alarmManager.setRepeating(
+                AlarmManager.RTC_WAKEUP,
+                horaInicio,
+                intervaloMillis,
+                pendingIntent
+            )
+
+            // Cancelar en fechaFin/horaFin
+            val cancelIntent = PendingIntent.getBroadcast(
+                context,
+                ("cancel_" + sub.hashCode()).hashCode(),
+                Intent(context, CancelReceiver::class.java).apply {
+                    putExtra("requestCode", sub.hashCode())
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                horaFin,
+                cancelIntent
+            )
         }
     }
 

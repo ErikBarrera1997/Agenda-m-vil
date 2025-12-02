@@ -1,5 +1,6 @@
 package com.dev.uiElements
 
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.net.Uri
@@ -10,9 +11,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.DialogProperties
@@ -39,12 +42,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.dev.Dao.Recordatorio
+import com.dev.Dao.SubNotificacion
 import com.dev.agenda_movil.AppViewModelProvider
 import com.dev.agenda_movil.MainActivity
 import com.dev.agenda_movil.R
 import com.dev.utils.crearUriPersistente
 import com.dev.utils.crearUriVideoPersistente
 import kotlinx.coroutines.launch
+import java.nio.file.Files.copy
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -300,6 +305,7 @@ fun AddReminderDialog(
     val focusManager = LocalFocusManager.current
     val viewModel: RecordatoriosViewModel = viewModel(factory = AppViewModelProvider.Factory)
     val formState = viewModel.formState.value
+    var showSubDialog by remember { mutableStateOf(false) }
 
     //
     var uriPersistente by remember { mutableStateOf<Uri?>(null) }
@@ -308,20 +314,22 @@ fun AddReminderDialog(
     val launcherCamara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         val uri = uriPersistente
         if (success && uri != null) {
-            viewModel.actualizarCampo { copy(imagenUri = uri.toString()) }
+            viewModel.actualizarCampo {
+                copy(imagenesUri = imagenesUri + uri.toString())
+            }
         }
     }
 
-    //
     val launcherVideo = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
         val uri = uriPersistente
         if (success && uri != null) {
-            viewModel.actualizarCampo { copy(videoUri = uri.toString()) }
+            viewModel.actualizarCampo {
+                copy(videosUri = videosUri + uri.toString())
+            }
         }
     }
 
-
-
+    var nuevaUriAudio by remember { mutableStateOf<Uri?>(null) }
 
     fun showDatePicker(onDateSelected: (String) -> Unit) {
         DatePickerDialog(
@@ -377,6 +385,65 @@ fun AddReminderDialog(
                     .fillMaxWidth()
                     .verticalScroll(scrollState) //habilita scroll
             ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = { showSubDialog = true },
+                        enabled = formState.fechaFin.isNotBlank() && formState.horaFin.isNotBlank()
+                    ) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Configurar subnotificaciones")
+                        Spacer(Modifier.width(4.dp))
+                        Text("Configurar subnotificación")
+                    }
+                }
+
+                if (showSubDialog) {
+                    ConfigurarSubnotificacionesDialog(
+                        fechaInicio = formState.fechaInicio,
+                        horaInicio = formState.horaInicio,
+                        fechaFin = formState.fechaFin,
+                        horaFin = formState.horaFin,
+                        onDismiss = { showSubDialog = false },
+                        onSave = { sub ->
+                            viewModel.updateFormState {
+                                copy(subnotificaciones = subnotificaciones + sub)
+                            }
+                            showSubDialog = false
+                        }
+                    )
+                }
+
+                Column(modifier = Modifier.padding(8.dp)) {
+                    if (formState.subnotificaciones.isEmpty()) {
+                        Text("No hay subnotificaciones configuradas")
+                    } else {
+                        formState.subnotificaciones.forEach { sub ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Cada ${sub.intervaloMinutos} min hasta ${sub.fechaFin} ${sub.horaFin}")
+                                IconButton(onClick = {
+                                    viewModel.updateFormState {
+                                        copy(subnotificaciones = subnotificaciones - sub)
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = "Eliminar",
+                                        tint = Color.Red
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = formState.titulo,
                     onValueChange = { viewModel.actualizarCampo { copy(titulo = it) } },
@@ -487,66 +554,72 @@ fun AddReminderDialog(
 
                     Text(text = stringResource(id = R.string.tomar_video), modifier = Modifier.padding(start = 8.dp))
                 }
-//
-//                Text(
-//                    text = "Video URI: ${formState.videoUri ?: "Sin video"}",
-//                    style = MaterialTheme.typography.titleSmall,
-//                    color = Color.Blue
-//                )
 
-                ///AQUI ES PARA QUE SE MUESTRE LA IMAGEN PERSISTENTE
-                formState.imagenUri?.let { uriString ->
-                    //val uri = Uri.parse(uriString)
-                    AsyncImage(
-                        model = Uri.parse(formState.imagenUri ?: ""),
-                        contentDescription = "Imagen adjunta",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.LightGray),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
-                formState.videoUri?.takeIf { it.isNotBlank() }?.let { uriString ->
-                    val uri = Uri.parse(uriString)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black)
+//========================================================================================================
+                // Mostrar todas las imágenes persistentes
+                if (formState.imagenesUri.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        AndroidView(
-                            factory = { ctx ->
-                                VideoView(ctx).apply {
-                                    setVideoURI(uri)
-                                    setOnPreparedListener { mp ->
-                                        mp.isLooping = true
-                                        start()
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-
-                        IconButton(
-                            onClick = {
-                                viewModel.actualizarCampo { copy(videoUri = null) }
-                            },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar video", tint = Color.White)
+                        items(formState.imagenesUri) { uriString ->
+                            AsyncImage(
+                                model = Uri.parse(uriString),
+                                contentDescription = "Imagen adjunta",
+                                modifier = Modifier
+                                    .width(200.dp)
+                                    .height(200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.LightGray),
+                                contentScale = ContentScale.Crop
+                            )
                         }
                     }
-                } ?: Text(
-                    text = "Sin video",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
-                )
+                } else {
+                    Text(
+                        text = "Sin imágenes",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                }
+//====================================================================================================
+                if (formState.videosUri.isNotEmpty()) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        formState.videosUri.forEach { uriString ->
+                            val uri = Uri.parse(uriString)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.Black)
+                            ) {
+                                AndroidView(
+                                    factory = { ctx ->
+                                        VideoView(ctx).apply {
+                                            setVideoURI(uri)
+                                            setOnPreparedListener { mp ->
+                                                mp.isLooping = true
+                                                start()
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "Sin videos",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                }
+//==============================================================================================================
 
 
             }
@@ -554,6 +627,71 @@ fun AddReminderDialog(
     )
 }
 
+@Composable
+fun ConfigurarSubnotificacionesDialog(
+    fechaInicio: String,
+    horaInicio: String,
+    fechaFin: String,
+    horaFin: String,
+    onDismiss: () -> Unit,
+    onSave: (SubNotificacion) -> Unit
+) {
+    var intervalo by remember { mutableStateOf("30") } // minutos por defecto
+    var unidad by remember { mutableStateOf("minutos") }
+    val dropdown = UnidadDropdown()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Configurar subnotificación") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedTextField(
+                    value = intervalo,
+                    onValueChange = { intervalo = it.filter { ch -> ch.isDigit() } },
+                    label = { Text("Intervalo") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                Spacer(Modifier.height(8.dp))
+
+                dropdown.Render(
+                    selected = unidad,
+                    onSelected = { unidad = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+                val pluralUnidad = if (intervalo == "1") unidad.removeSuffix("s") else unidad
+                Text("Se repetirá cada $intervalo $pluralUnidad hasta $fechaFin $horaFin")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val valor = intervalo.toIntOrNull()
+                if (valor != null && valor > 0) {
+                    val minutos = when (unidad) {
+                        "horas" -> valor * 60
+                        "días" -> valor * 24 * 60
+                        else -> valor
+                    }
+
+                    val sub = SubNotificacion(
+                        intervaloMinutos = minutos,
+                        fechaInicio = fechaInicio,
+                        horaInicio = horaInicio,
+                        fechaFin = fechaFin,
+                        horaFin = horaFin
+                    )
+                    onSave(sub)
+                }
+            }) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
 
 @Composable
 fun AddReminderScreen(onBack: () -> Unit) {
